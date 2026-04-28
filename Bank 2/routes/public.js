@@ -10,7 +10,22 @@ const fail = (res, msg, status = 500, code = null) =>
 
 // GET /api/help
 router.get('/help', (_req, res) => {
-  res.redirect('https://spotty-divan-1b9.notion.site/PingFin-API-Documentation-GKCCBEBB-350f0625fdc2807d97dfcca8b8dd1561');
+  ok(res, [
+    { method: 'GET',  path: '/api/help',              desc: 'Overzicht van alle beschikbare endpoints',                              auth: false },
+    { method: 'GET',  path: '/api/info',              desc: 'Bank info: BIC, naam, teamleden',                                       auth: false },
+    { method: 'GET',  path: '/api/accounts',          desc: 'Lijst van alle rekeningen met saldo',                                   auth: false },
+    { method: 'POST', path: '/api/po_new_add',        desc: 'Nieuwe Payment Orders toevoegen aan PO_NEW',                            auth: false },
+    { method: 'GET',  path: '/api/po_new_process',    desc: 'POs valideren en doorsturen naar CB',                                   auth: true  },
+    { method: 'GET',  path: '/api/po_out',            desc: 'Inhoud van PO_OUT tabel',                                               auth: false },
+    { method: 'GET',  path: '/api/ack_out',           desc: 'ACKs ophalen van de CB',                                                auth: false },
+    { method: 'GET',  path: '/api/ack_in',            desc: 'ACKs van CB opslaan in ack_in tabel',                                   auth: false },
+    { method: 'GET',  path: '/api/token',             desc: 'Haalt een CB token op',                                                 auth: false },
+    { method: 'GET',  path: '/api/po_new_generate',   desc: 'Genereert automatisch nieuwe POs via parameters: count, min, max',      auth: false },
+    { method: 'GET',  path: '/api/cb/poll_po',        desc: 'Inkomende POs ophalen van CB en verwerken',                             auth: false },
+    { method: 'GET',  path: '/api/cb/poll_ack',       desc: 'Inkomende ACKs ophalen van CB',                                         auth: false },
+    { method: 'GET',  path: '/api/transactions',      desc: 'Alle transacties',                                                      auth: false },
+    { method: 'GET',  path: '/api/logs',              desc: 'Alle logs',                                                             auth: false },
+  ], 'API endpoints');
 });
 
 // GET /api/info
