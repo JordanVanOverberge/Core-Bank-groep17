@@ -1,16 +1,20 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
+const pool    = require('./db');
 
 const app = express();
 app.use(express.json());
- 
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.use('/api', require('./routes/public'));
 app.use('/api', require('./routes/po'));
 app.use('/api', require('./routes/po_in'));
 app.use('/api', require('./routes/cb_poll'));
 app.use('/api', require('./routes/data'));
- 
+
+app.get('/', (req, res) => res.redirect('/api/help'));
+
 const PORT = process.env.PORT || 3001;
 pool.initDb().then(() => {
   app.listen(PORT, () => {
