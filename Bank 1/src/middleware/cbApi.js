@@ -49,4 +49,12 @@ async function sendAckIn(ackList) {
   return res.data;
 }
 
-module.exports = { getToken, sendPoToCb, fetchPoFromCb, fetchAckOut, sendAckIn };
+async function fetchBanks() {
+  const token = await getToken();
+  const res = await axios.get(`${CB_URL}/banks`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+}
+
+module.exports = { getToken, sendPoToCb, fetchPoFromCb, fetchAckOut, sendAckIn, fetchBanks };

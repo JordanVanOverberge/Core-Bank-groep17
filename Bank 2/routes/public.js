@@ -1,6 +1,7 @@
-const express = require('express');
-const router  = express.Router();
-const pool    = require('../db');
+const express        = require('express');
+const router         = express.Router();
+const pool           = require('../db');
+const { getCBToken } = require('../services/cbToken');
 
 const ok   = (res, data, msg = 'OK', status = 200) =>
   res.status(status).json({ ok: true,  status, code: 2000,          message: msg, data });
@@ -42,6 +43,16 @@ router.get('/accounts', async (_req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM accounts');
     ok(res, rows, `${rows.length} rekening(en) gevonden`);
+  } catch (err) {
+    fail(res, err.message);
+  }
+});
+
+// GET /api/token
+router.get('/token', async (_req, res) => {
+  try {
+    const token = await getCBToken();
+    ok(res, [{ token }], 'Token opgehaald');
   } catch (err) {
     fail(res, err.message);
   }
