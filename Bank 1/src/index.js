@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 const ok = (res, data = null, message = null, status = 200) =>
-  res.status(status).json({ ok: true, status, code: null, message, data });
+  res.status(status).json({ ok: true, status, code: 2000, message, data });
 
 const fail = (res, code, message, status = 500) =>
   res.status(status).json({ ok: false, status, code, message, data: null });
@@ -21,7 +21,8 @@ app.get('/', (req, res) => res.redirect('/api/help'));
 
 app.get('/api/help', (req, res) => {
   return ok(res, [
-    { method: 'GET',  url: '/api/help',       description: 'This help page' },
+    { method: 'GET',  url: '/api/help',        description: 'This help page' },
+    { method: 'GET',  url: '/api/info',        description: 'Bank info (BIC, name, team members)' },
     { method: 'GET',  url: '/api/token',       description: 'Get a fresh CB auth token' },
     { method: 'GET',  url: '/api/accounts',    description: 'List all accounts' },
     { method: 'GET',  url: '/api/log',         description: 'Last 100 log entries' },
@@ -30,6 +31,15 @@ app.get('/api/help', (req, res) => {
     { method: 'GET',  url: '/api/po/incoming', description: 'Fetch and process incoming POs from CB (BB flow)' },
     { method: 'GET',  url: '/api/po/ack',      description: 'Fetch ACKs for sent POs from CB' },
   ], `PingFin Bank — BIC: ${process.env.BANK_BIC}`);
+});
+
+app.get('/api/info', (req, res) => {
+  return ok(res, {
+    bic:     process.env.BANK_BIC,
+    name:    process.env.BANK_NAME,
+    cb_url:  process.env.CB_URL,
+    members: ['Moussa Ismaël', 'Van Overberge Jordan', 'Boulhefa Anas', 'Bentatou Yasmina'],
+  }, 'Bank info');
 });
 
 app.get('/api/token', async (req, res) => {

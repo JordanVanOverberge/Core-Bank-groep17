@@ -45,7 +45,7 @@ router.post('/po_in', auth, async (req, res) => {
         po_datetime: po.po_datetime,
         ob_id: po.ob_id, oa_id: po.oa_id, ob_code: null, ob_datetime: null,
         cb_code: po.cb_code ?? null, cb_datetime: po.cb_datetime ?? null,
-        bb_id: process.env.BIC, ba_id: po.ba_id, bb_code: 'OK', bb_datetime: ts
+        bb_id: process.env.BIC, ba_id: po.ba_id, bb_code: 2000, bb_datetime: ts
       };
 
       await pool.query(

@@ -166,7 +166,8 @@
     showResponse('Accounts ophalen', '...', 'Bezig...');
     try {
       const res = await fetch('/api/accounts');
-      const data = await res.json();
+      const json = await res.json();
+      const data = json.data;
       const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
       const rows = data.map(a => `
         <tr>

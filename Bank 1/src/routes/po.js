@@ -5,10 +5,9 @@ const cb = require('../middleware/cbApi');
 
 const BIC = () => process.env.BANK_BIC;
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
-const obCode = () => 'OB' + Date.now().toString().slice(-8);
 
 const ok = (res, data = null, message = null, status = 200) =>
-  res.status(status).json({ ok: true, status, code: null, message, data });
+  res.status(status).json({ ok: true, status, code: 2000, message, data });
 
 const fail = (res, code, message, status = 400) =>
   res.status(status).json({ ok: false, status, code, message, data: null });
@@ -17,13 +16,18 @@ const fail = (res, code, message, status = 400) =>
 router.post('/', async (req, res) => {
   try {
     const { po_amount, po_message, bb_id, oa_id, ba_id } = req.body;
-    const po_id = `${BIC()}_${Date.now()}`;
-    const po_datetime = now();
-    const ob_code = obCode();
-    const ob_datetime = now();
 
     if (!po_amount || po_amount <= 0)
-      return fail(res, 'INVALID_AMOUNT', 'Bedrag moet groter zijn dan 0');
+      return fail(res, 4003, 'Bedrag moet groter zijn dan 0');
+    if (po_amount > 500)
+      return fail(res, 4002, 'Bedrag mag niet hoger zijn dan 500 euro');
+    if (bb_id === BIC())
+      return fail(res, 4001, 'Interne betalingen mogen niet naar de CB worden gestuurd');
+
+    const po_id = `${BIC()}_${Date.now()}`;
+    const po_datetime = now();
+    const ob_code = 2000;
+    const ob_datetime = now();
 
     const [account] = await pool.query('SELECT * FROM accounts WHERE id = ?', [oa_id]);
     if (!account.length)
@@ -80,7 +84,7 @@ router.get('/incoming', async (req, res) => {
     for (const po of pos) {
       const [account] = await pool.query('SELECT * FROM accounts WHERE id = ?', [po.ba_id]);
       const isvalid = account.length > 0 && po.po_amount > 0 ? 1 : 0;
-      const bb_code = 'BB' + Date.now().toString().slice(-8);
+      const bb_code = isvalid ? 2000 : 4004;
       const bb_datetime = now();
 
       await pool.query(

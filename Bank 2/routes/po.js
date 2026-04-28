@@ -13,12 +13,12 @@ const genId = () =>
 const now   = () =>
   new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-const MAX_AMOUNT = 999999.99;
+const MAX_AMOUNT = 500;
 
 // CB error codes (pre-validation)
 const CB_CODES = {
   4001: 'Interne betaling – niet naar CB sturen',
-  4002: 'Bedrag is te hoog (max 999.999,99)',
+  4002: 'Bedrag is te hoog (max 500 euro)',
   4003: 'Bedrag is negatief of nul',
 };
 
