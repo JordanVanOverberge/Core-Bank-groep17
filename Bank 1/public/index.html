@@ -4,243 +4,898 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PingFin — Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
+    :root {
+      --bg: #080c14;
+      --surface: #0d1520;
+      --surface2: #111d2e;
+      --surface3: #162236;
+      --border: #1e2f45;
+      --border2: #243a55;
+      --accent: #00c8ff;
+      --accent2: #0094ff;
+      --green: #00e676;
+      --orange: #ffab40;
+      --red: #ff5252;
+      --text: #e8f4ff;
+      --text2: #7a9bbf;
+      --text3: #4a6a8a;
+      --mono: 'Space Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
-    header { border-bottom: 1px solid #2d3748; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 14px; letter-spacing: 0.15em; color: #f7c948; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; display: inline-block; margin-right: 6px; }
-    .server-url { font-size: 12px; color: #718096; }
-    main { padding: 2rem; max-width: 960px; margin: 0 auto; }
-    .section { margin-bottom: 2rem; }
-    .section-title { font-size: 10px; letter-spacing: 0.15em; color: #718096; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #2d3748; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-    .btn { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; color: inherit; width: 100%; }
-    .btn:hover { background: #2d3748; border-color: #4a5568; }
-    .btn:active { transform: scale(0.98); }
-    .btn-method { font-size: 10px; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 5px; }
-    .btn-name { font-size: 13px; color: #e2e8f0; margin-bottom: 3px; }
-    .btn-endpoint { font-size: 11px; color: #718096; }
-    .get { color: #48bb78; }
-    .post { color: #f6ad55; }
-    .form-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .field label { display: block; font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-    .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 4px; padding: 7px 10px; font-size: 12px; font-family: 'Courier New', monospace; color: #e2e8f0; }
-    .field input:focus { outline: none; border-color: #f7c948; }
-    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; }
-    .submit-btn:hover { background: #ecc333; }
-    .response-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-top: 1.5rem; display: none; }
-    .response-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2d3748; }
-    .response-title { font-size: 11px; color: #718096; letter-spacing: 0.1em; text-transform: uppercase; }
-    .status-ok  { font-size: 11px; color: #48bb78; }
-    .status-err { font-size: 11px; color: #fc8181; }
-    .response-body { padding: 14px; font-size: 12px; color: #a0aec0; white-space: pre-wrap; max-height: 320px; overflow-y: auto; line-height: 1.7; }
-    .accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-    .accounts-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #718096; border-bottom: 1px solid #2d3748; }
-    .accounts-table td { padding: 8px 12px; border-bottom: 1px solid #1a202c; color: #e2e8f0; }
-    .accounts-table tr:hover td { background: #2d3748; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ─── TOPBAR ─── */
+    .topbar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: -0.05em;
+      flex-shrink: 0;
+    }
+
+    .topbar-title {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.08em;
+    }
+
+    .topbar-bank {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+    }
+
+    .topbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 8px; }
+
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,230,118,0.08);
+      border: 1px solid rgba(0,230,118,0.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--green);
+      font-family: var(--mono);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,230,118,0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(0,230,118,0); }
+    }
+
+    .server-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    /* ─── LAYOUT ─── */
+    .layout {
+      display: flex;
+      flex: 1;
+    }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-group {
+      margin-bottom: 8px;
+    }
+
+    .nav-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: var(--text3);
+      text-transform: uppercase;
+      padding: 0 20px 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text2);
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+      user-select: none;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: var(--surface2);
+      border-left-color: var(--border2);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+      background: rgba(0,200,255,0.06);
+      border-left-color: var(--accent);
+    }
+
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+    /* ─── MAIN ─── */
+    .main {
+      flex: 1;
+      padding: 28px 32px;
+      max-width: 900px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.25s ease; }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .page-sub {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    /* ─── GRID CARDS ─── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-align: left;
+      color: inherit;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 60%, rgba(0,200,255,0.03));
+      pointer-events: none;
+    }
+
+    .card:hover {
+      background: var(--surface2);
+      border-color: var(--border2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,200,255,0.08);
+    }
+
+    .card:active { transform: scale(0.985); }
+
+    .card-method {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      margin-bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-method::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .get  { color: var(--green); }
+    .post { color: var(--orange); }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .card-endpoint {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text3);
+    }
+
+    /* ─── FORM PANEL ─── */
+    .form-panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      display: none;
+      animation: slideDown 0.2s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-panel.open { display: block; }
+
+    .form-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+
+    .field label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 5px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,200,255,0.1);
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 20px;
+      font-size: 12px;
+      font-family: var(--mono);
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+
+    .submit-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 16px rgba(0,200,255,0.25);
+    }
+
+    /* ─── RESPONSE ─── */
+    .response-wrap {
+      margin-top: 24px;
+      display: none;
+    }
+
+    .response-wrap.visible { display: block; animation: fadeIn 0.2s ease; }
+
+    .response-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .response-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text2);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .response-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.08em;
+    }
+
+    .badge-ok  { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+    .badge-err { background: rgba(255,82,82,0.12);  color: var(--red);   border: 1px solid rgba(255,82,82,0.25); }
+    .badge-pending { background: rgba(0,200,255,0.1); color: var(--accent); border: 1px solid rgba(0,200,255,0.2); }
+
+    .response-body {
+      padding: 16px;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: #7fbbdd;
+      white-space: pre-wrap;
+      max-height: 380px;
+      overflow-y: auto;
+      line-height: 1.8;
+    }
+
+    .response-body::-webkit-scrollbar { width: 4px; }
+    .response-body::-webkit-scrollbar-track { background: transparent; }
+    .response-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ─── TABLE ─── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 9px 14px;
+      font-family: var(--mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text3);
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+    }
+
+    .data-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(30,47,69,0.5);
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .balance-positive { color: var(--green); font-family: var(--mono); font-weight: 700; }
+    .iban-code { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+
+    /* ─── SIDEBAR SCROLL ─── */
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* ─── DIVIDER ─── */
+    .section-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
   </style>
 </head>
 <body>
 
-<header>
-  <h1 id="headerTitle">PINGFIN — ADMIN PANEL</h1>
-  <span class="server-url"><span class="dot"></span><span id="serverUrl"></span></span>
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark">PF</div>
+    <span class="topbar-title">PINGFIN</span>
+    <div class="topbar-sep"></div>
+    <span class="topbar-bank" id="headerBic">ADMIN PANEL</span>
+  </div>
+  <div class="topbar-right">
+    <div class="status-pill"><div class="status-dot"></div>ONLINE</div>
+    <span class="server-tag" id="serverUrl"></span>
+  </div>
 </header>
 
-<main>
+<div class="layout">
 
-  <!-- DOCUMENTATIE -->
-  <div class="section">
-    <div class="section-title">Documentatie</div>
-    <div class="grid">
-      <button class="btn" onclick="loadHelp()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">API Help</div>
-        <div class="btn-endpoint">/api/help</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- ACCOUNTS -->
-  <div class="section">
-    <div class="section-title">Accounts</div>
-    <div class="grid">
-      <button class="btn" onclick="loadAccounts()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Alle rekeningen</div>
-        <div class="btn-endpoint">/api/accounts</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- AUTHENTICATIE -->
-  <div class="section">
-    <div class="section-title">Authenticatie</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/token','Token ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer CB token</div>
-        <div class="btn-endpoint">/api/token</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- OB FLOW -->
-  <div class="section">
-    <div class="section-title">Payment Orders — OB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="toggleForm('generateForm')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer POs</div>
-        <div class="btn-endpoint">/api/po_new_generate</div>
-      </button>
-      <button class="btn" onclick="toggleForm('poAddForm')">
-        <div class="btn-method post">POST</div>
-        <div class="btn-name">Voeg PO toe</div>
-        <div class="btn-endpoint">/api/po_new_add</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_new_process','POs verwerken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Verwerk POs naar CB</div>
-        <div class="btn-endpoint">/api/po_new_process</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_out','PO-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk PO-out</div>
-        <div class="btn-endpoint">/api/po_out</div>
-      </button>
-    </div>
-
-    <div class="form-panel" id="generateForm">
-      <div class="form-grid-3">
-        <div class="field"><label>Aantal</label><input id="gen_count" value="3" /></div>
-        <div class="field"><label>Min (€)</label><input id="gen_min" value="1" /></div>
-        <div class="field"><label>Max (€)</label><input id="gen_max" value="500" /></div>
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-group">
+      <div class="nav-label">Systeem</div>
+      <div class="nav-item active" onclick="showSection('docs', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        API Help
       </div>
-      <button class="submit-btn" onclick="generatePos()">Genereer</button>
-    </div>
-
-    <div class="form-panel" id="poAddForm">
-      <div class="form-grid">
-        <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
-        <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
-        <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
-        <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
-        <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
+      <div class="nav-item" onclick="showSection('info', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Bank info
       </div>
-      <button class="submit-btn" onclick="addPo()">Toevoegen</button>
+      <div class="nav-item" onclick="showSection('auth', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        Authenticatie
+      </div>
     </div>
-  </div>
 
-  <!-- CB POLLING / BB FLOW -->
-  <div class="section">
-    <div class="section-title">CB Polling — BB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/cb/poll_po','Inkomende POs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen inkomende POs</div>
-        <div class="btn-endpoint">/api/cb/poll_po</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/cb/poll_ack','ACKs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen ACKs</div>
-        <div class="btn-endpoint">/api/cb/poll_ack</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_in','ACK-in bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-in</div>
-        <div class="btn-endpoint">/api/ack_in</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_out','ACK-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-out</div>
-        <div class="btn-endpoint">/api/ack_out</div>
-      </button>
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-label">Rekeningen</div>
+      <div class="nav-item" onclick="showSection('accounts', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        Alle rekeningen
+      </div>
     </div>
-  </div>
 
-  <!-- DATA & LOGS -->
-  <div class="section">
-    <div class="section-title">Data & logs</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/transactions','Transacties bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Transacties</div>
-        <div class="btn-endpoint">/api/transactions</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/logs','Logs bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Logs</div>
-        <div class="btn-endpoint">/api/logs</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/info','Bank info')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bank info</div>
-        <div class="btn-endpoint">/api/info</div>
-      </button>
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-label">OB Flow</div>
+      <div class="nav-item" onclick="showSection('po-generate', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Genereer POs
+      </div>
+      <div class="nav-item" onclick="showSection('po-add', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Voeg PO toe
+      </div>
+      <div class="nav-item" onclick="showSection('po-process', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        Verwerk naar CB
+      </div>
+      <div class="nav-item" onclick="showSection('po-out', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        PO-out
+      </div>
     </div>
-  </div>
 
-  <!-- RESPONSE -->
-  <div class="response-panel" id="responsePanel">
-    <div class="response-header">
-      <span class="response-title" id="responseTitle">Response</span>
-      <span id="responseStatus"></span>
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-label">BB Flow</div>
+      <div class="nav-item" onclick="showSection('poll-po', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/></svg>
+        Inkomende POs
+      </div>
+      <div class="nav-item" onclick="showSection('poll-ack', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        ACKs ophalen
+      </div>
+      <div class="nav-item" onclick="showSection('ack-in', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
+        ACK-in
+      </div>
+      <div class="nav-item" onclick="showSection('ack-out', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        ACK-out
+      </div>
     </div>
-    <div class="response-body" id="responseBody">Laden...</div>
-  </div>
 
-</main>
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-label">Monitoring</div>
+      <div class="nav-item" onclick="showSection('transactions', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Transacties
+      </div>
+      <div class="nav-item" onclick="showSection('logs', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        Logs
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- DOCS -->
+    <div class="section active" id="section-docs">
+      <div class="page-header">
+        <div class="page-title">API Documentatie</div>
+        <div class="page-sub">Overzicht van alle beschikbare endpoints</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="loadHelp()">
+          <div class="card-method get">GET</div>
+          <div class="card-name">API Help</div>
+          <div class="card-endpoint">/api/help</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-docs"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-docs-title"></div></div><span id="resp-docs-status"></span></div><div class="response-body" id="resp-docs-body"></div></div></div>
+    </div>
+
+    <!-- INFO -->
+    <div class="section" id="section-info">
+      <div class="page-header">
+        <div class="page-title">Bank Informatie</div>
+        <div class="page-sub">BIC, naam en teamleden van deze bank</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/info','Bank info','info')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Bank info</div>
+          <div class="card-endpoint">/api/info</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-info"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-info-title"></div></div><span id="resp-info-status"></span></div><div class="response-body" id="resp-info-body"></div></div></div>
+    </div>
+
+    <!-- AUTH -->
+    <div class="section" id="section-auth">
+      <div class="page-header">
+        <div class="page-title">Authenticatie</div>
+        <div class="page-sub">CB Bearer token genereren voor beveiligde endpoints</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/token','Token genereren','auth')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Genereer CB token</div>
+          <div class="card-endpoint">/api/token</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-auth"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-auth-title"></div></div><span id="resp-auth-status"></span></div><div class="response-body" id="resp-auth-body"></div></div></div>
+    </div>
+
+    <!-- ACCOUNTS -->
+    <div class="section" id="section-accounts">
+      <div class="page-header">
+        <div class="page-title">Rekeningen</div>
+        <div class="page-sub">Alle bankrekeningen met huidig saldo</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="loadAccounts()">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Alle rekeningen</div>
+          <div class="card-endpoint">/api/accounts</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-accounts"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-accounts-title"></div></div><span id="resp-accounts-status"></span></div><div class="response-body" id="resp-accounts-body"></div></div></div>
+    </div>
+
+    <!-- PO GENERATE -->
+    <div class="section" id="section-po-generate">
+      <div class="page-header">
+        <div class="page-title">Genereer Payment Orders</div>
+        <div class="page-sub">Automatisch dummy POs aanmaken via Faker.js</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="toggleForm('generateForm')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Genereer POs</div>
+          <div class="card-endpoint">/api/po_new_generate</div>
+        </button>
+      </div>
+      <div class="form-panel" id="generateForm">
+        <div class="form-grid-3">
+          <div class="field"><label>Aantal</label><input id="gen_count" value="3" /></div>
+          <div class="field"><label>Min (€)</label><input id="gen_min" value="1" /></div>
+          <div class="field"><label>Max (€)</label><input id="gen_max" value="500" /></div>
+        </div>
+        <button class="submit-btn" onclick="generatePos()">Genereer</button>
+      </div>
+      <div class="response-wrap" id="resp-po-generate"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-po-generate-title"></div></div><span id="resp-po-generate-status"></span></div><div class="response-body" id="resp-po-generate-body"></div></div></div>
+    </div>
+
+    <!-- PO ADD -->
+    <div class="section" id="section-po-add">
+      <div class="page-header">
+        <div class="page-title">Voeg Payment Order toe</div>
+        <div class="page-sub">Nieuwe betaling indienen in PO_NEW</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="toggleForm('poAddForm')">
+          <div class="card-method post">POST</div>
+          <div class="card-name">Voeg PO toe</div>
+          <div class="card-endpoint">/api/po_new_add</div>
+        </button>
+      </div>
+      <div class="form-panel" id="poAddForm">
+        <div class="form-grid">
+          <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
+          <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
+          <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
+          <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
+          <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
+        </div>
+        <button class="submit-btn" onclick="addPo()">Toevoegen</button>
+      </div>
+      <div class="response-wrap" id="resp-po-add"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-po-add-title"></div></div><span id="resp-po-add-status"></span></div><div class="response-body" id="resp-po-add-body"></div></div></div>
+    </div>
+
+    <!-- PO PROCESS -->
+    <div class="section" id="section-po-process">
+      <div class="page-header">
+        <div class="page-title">Verwerk POs naar CB</div>
+        <div class="page-sub">Valideer en stuur Payment Orders door naar de Clearing Bank</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/po_new_process','POs verwerken','po-process')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Verwerk POs naar CB</div>
+          <div class="card-endpoint">/api/po_new_process</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-po-process"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-po-process-title"></div></div><span id="resp-po-process-status"></span></div><div class="response-body" id="resp-po-process-body"></div></div></div>
+    </div>
+
+    <!-- PO OUT -->
+    <div class="section" id="section-po-out">
+      <div class="page-header">
+        <div class="page-title">PO-out</div>
+        <div class="page-sub">Verstuurde Payment Orders naar de CB</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/po_out','PO-out bekijken','po-out')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Bekijk PO-out</div>
+          <div class="card-endpoint">/api/po_out</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-po-out"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-po-out-title"></div></div><span id="resp-po-out-status"></span></div><div class="response-body" id="resp-po-out-body"></div></div></div>
+    </div>
+
+    <!-- POLL PO -->
+    <div class="section" id="section-poll-po">
+      <div class="page-header">
+        <div class="page-title">Inkomende POs ophalen</div>
+        <div class="page-sub">Poll de CB voor binnenkomende Payment Orders (BB rol)</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/cb/poll_po','Inkomende POs ophalen','poll-po')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Poll inkomende POs</div>
+          <div class="card-endpoint">/api/cb/poll_po</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-poll-po"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-poll-po-title"></div></div><span id="resp-poll-po-status"></span></div><div class="response-body" id="resp-poll-po-body"></div></div></div>
+    </div>
+
+    <!-- POLL ACK -->
+    <div class="section" id="section-poll-ack">
+      <div class="page-header">
+        <div class="page-title">ACKs ophalen</div>
+        <div class="page-sub">Bevestigingen ophalen van de CB</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/cb/poll_ack','ACKs ophalen','poll-ack')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Ophalen ACKs</div>
+          <div class="card-endpoint">/api/cb/poll_ack</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-poll-ack"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-poll-ack-title"></div></div><span id="resp-poll-ack-status"></span></div><div class="response-body" id="resp-poll-ack-body"></div></div></div>
+    </div>
+
+    <!-- ACK IN -->
+    <div class="section" id="section-ack-in">
+      <div class="page-header">
+        <div class="page-title">ACK-in</div>
+        <div class="page-sub">Ontvangen bevestigingen van de CB</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/ack_in','ACK-in bekijken','ack-in')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Bekijk ACK-in</div>
+          <div class="card-endpoint">/api/ack_in</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-ack-in"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-ack-in-title"></div></div><span id="resp-ack-in-status"></span></div><div class="response-body" id="resp-ack-in-body"></div></div></div>
+    </div>
+
+    <!-- ACK OUT -->
+    <div class="section" id="section-ack-out">
+      <div class="page-header">
+        <div class="page-title">ACK-out</div>
+        <div class="page-sub">Teruggestuurde bevestigingen naar de CB</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/ack_out','ACK-out bekijken','ack-out')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Bekijk ACK-out</div>
+          <div class="card-endpoint">/api/ack_out</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-ack-out"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-ack-out-title"></div></div><span id="resp-ack-out-status"></span></div><div class="response-body" id="resp-ack-out-body"></div></div></div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="section" id="section-transactions">
+      <div class="page-header">
+        <div class="page-title">Transacties</div>
+        <div class="page-sub">Definitief verwerkte betalingen</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/transactions','Transacties','transactions')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Transacties</div>
+          <div class="card-endpoint">/api/transactions</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-transactions"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-transactions-title"></div></div><span id="resp-transactions-status"></span></div><div class="response-body" id="resp-transactions-body"></div></div></div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="section" id="section-logs">
+      <div class="page-header">
+        <div class="page-title">Logs</div>
+        <div class="page-sub">Alle API-aanroepen met timestamp en resultaat</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="simpleApi('GET','/api/logs','Logs bekijken','logs')">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Logs</div>
+          <div class="card-endpoint">/api/logs</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-logs"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-logs-title"></div></div><span id="resp-logs-status"></span></div><div class="response-body" id="resp-logs-body"></div></div></div>
+    </div>
+
+  </main>
+</div>
 
 <script>
-  // Set header info from server
   document.getElementById('serverUrl').textContent = window.location.host;
   fetch('/api/info').then(r => r.json()).then(j => {
-    if (j.data) document.getElementById('headerTitle').textContent =
-      `${j.data.name || j.data.bic} — ADMIN PANEL`;
+    if (j.data) {
+      const bic = j.data.bic || '';
+      document.getElementById('headerBic').textContent = bic;
+    }
   }).catch(() => {});
+
+  function showSection(id, navEl) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('section-' + id).classList.add('active');
+    if (navEl) navEl.classList.add('active');
+  }
 
   function toggleForm(id) {
     const el = document.getElementById(id);
-    el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    el.classList.toggle('open');
   }
 
-  function showResponse(title, status, body, html) {
-    const panel = document.getElementById('responsePanel');
-    panel.style.display = 'block';
-    document.getElementById('responseTitle').textContent = title;
-    const st = document.getElementById('responseStatus');
-    st.textContent = 'STATUS ' + status;
-    st.className = String(status).startsWith('2') ? 'status-ok' : 'status-err';
-    const bodyEl = document.getElementById('responseBody');
-    if (html) {
+  function setResp(key, title, status, bodyText, isHtml) {
+    const wrap = document.getElementById('resp-' + key);
+    const titleEl = document.getElementById('resp-' + key + '-title');
+    const statusEl = document.getElementById('resp-' + key + '-status');
+    const bodyEl = document.getElementById('resp-' + key + '-body');
+    if (!wrap) return;
+    wrap.classList.add('visible');
+    titleEl.textContent = title;
+    const st = String(status);
+    statusEl.className = 'badge';
+    if (st.startsWith('2')) { statusEl.className += ' badge-ok'; statusEl.textContent = '● ' + status; }
+    else if (st === '...') { statusEl.className += ' badge-pending'; statusEl.textContent = 'Laden...'; }
+    else { statusEl.className += ' badge-err'; statusEl.textContent = '● ' + status; }
+
+    if (isHtml) {
       bodyEl.style.whiteSpace = 'normal';
-      bodyEl.innerHTML = html;
+      bodyEl.style.fontFamily = 'var(--sans)';
+      bodyEl.innerHTML = bodyText;
     } else {
       bodyEl.style.whiteSpace = 'pre-wrap';
-      let display = body;
-      try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
+      bodyEl.style.fontFamily = 'var(--mono)';
+      let display = bodyText;
+      try { display = JSON.stringify(JSON.parse(bodyText), null, 2); } catch(e) {}
       bodyEl.textContent = display;
     }
-    panel.scrollIntoView({ behavior: 'smooth' });
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  async function api(method, url, title) {
-    showResponse(title, '...', 'Bezig...');
+  async function simpleApi(method, url, title, key) {
+    setResp(key, title, '...', 'Bezig...');
     try {
       const res  = await fetch(url, { method });
       const text = await res.text();
-      showResponse(title, res.status, text);
+      setResp(key, title, res.status, text);
     } catch(e) {
-      showResponse(title, 'ERROR', e.message);
+      setResp(key, title, 'ERROR', e.message);
     }
   }
 
   async function loadAccounts() {
-    showResponse('Accounts ophalen', '...', 'Bezig...');
+    setResp('accounts', 'Alle rekeningen', '...', 'Bezig...');
     try {
       const res  = await fetch('/api/accounts');
       const json = await res.json();
@@ -248,23 +903,47 @@
       const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
       const rows = data.map(a => `
         <tr>
-          <td style="font-family:'Courier New',monospace;font-size:11px">${a.id}</td>
-          <td style="color:${parseFloat(a.balance) > 0 ? '#68d391' : '#fc8181'};font-weight:bold;text-align:right">
-            €${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}
+          <td class="iban-code">${a.id}</td>
+          <td style="text-align:right">
+            <span class="balance-positive">€${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
           </td>
         </tr>`).join('');
       const html = `
-        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px">
-          <span style="color:#718096">${data.length} rekeningen</span>
-          <span style="color:#48bb78">Totaal: €${total.toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:12px;padding:0 2px">
+          <span style="color:var(--text3);font-family:var(--mono);font-size:10px">${data.length} REKENINGEN</span>
+          <span style="color:var(--green);font-family:var(--mono);font-size:11px;font-weight:700">TOTAAL €${total.toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
         </div>
-        <table class="accounts-table">
+        <table class="data-table">
           <thead><tr><th>IBAN</th><th style="text-align:right">Saldo</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
-      showResponse('Accounts ophalen', res.status, null, html);
+      setResp('accounts', 'Alle rekeningen', res.status, html, true);
     } catch(e) {
-      showResponse('Accounts ophalen', 'ERROR', e.message);
+      setResp('accounts', 'Alle rekeningen', 'ERROR', e.message);
+    }
+  }
+
+  async function loadHelp() {
+    setResp('docs', 'API Help', '...', 'Bezig...');
+    try {
+      const res  = await fetch('/api/help');
+      const json = await res.json();
+      const rows = json.data.map(e => `
+        <tr>
+          <td><span style="font-family:var(--mono);font-size:9px;font-weight:700;color:${e.method==='GET'?'var(--green)':'var(--orange)'};letter-spacing:.08em">${e.method}</span></td>
+          <td class="iban-code" style="color:var(--text)">${e.path}</td>
+          <td style="font-size:12px;color:var(--text2)">${e.desc}</td>
+          <td style="text-align:center"><span style="font-family:var(--mono);font-size:9px;color:${e.auth?'var(--red)':'var(--green)'}">${e.auth?'JA':'NEE'}</span></td>
+        </tr>`).join('');
+      const html = `
+        <div style="margin-bottom:12px;font-size:11px;color:var(--text3);font-family:var(--mono)">${json.message || ''}</div>
+        <table class="data-table">
+          <thead><tr><th>Methode</th><th>Endpoint</th><th>Beschrijving</th><th style="text-align:center">Auth</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      setResp('docs', 'API Help', res.status, html, true);
+    } catch(e) {
+      setResp('docs', 'API Help', 'ERROR', e.message);
     }
   }
 
@@ -272,42 +951,25 @@
     const count = document.getElementById('gen_count').value;
     const min   = document.getElementById('gen_min').value;
     const max   = document.getElementById('gen_max').value;
-    await api('GET', `/api/po_new_generate?count=${count}&min=${min}&max=${max}`, 'POs genereren');
-  }
-
-  async function loadHelp() {
-    showResponse('API Help', '...', 'Bezig...');
+    setResp('po-generate', 'POs genereren', '...', 'Bezig...');
     try {
-      const res  = await fetch('/api/help');
-      const json = await res.json();
-      const rows = json.data.map(e => `
-        <tr>
-          <td style="color:${e.method==='GET'?'#48bb78':'#f6ad55'};font-weight:bold;font-size:10px;letter-spacing:.08em">${e.method}</td>
-          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${e.path}</td>
-          <td style="font-size:11px;color:#a0aec0">${e.desc}</td>
-          <td style="font-size:10px;color:${e.auth?'#fc8181':'#68d391'};text-align:center">${e.auth?'Ja':'Nee'}</td>
-        </tr>`).join('');
-      const html = `
-        <div style="margin-bottom:10px;font-size:11px;color:#718096">${json.message}</div>
-        <table class="accounts-table">
-          <thead><tr><th>Methode</th><th>Endpoint</th><th>Beschrijving</th><th style="text-align:center">Auth</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      showResponse('API Help', res.status, null, html);
+      const res  = await fetch(`/api/po_new_generate?count=${count}&min=${min}&max=${max}`);
+      const text = await res.text();
+      setResp('po-generate', 'POs genereren', res.status, text);
     } catch(e) {
-      showResponse('API Help', 'ERROR', e.message);
+      setResp('po-generate', 'POs genereren', 'ERROR', e.message);
     }
   }
 
   async function addPo() {
     const body = { data: [{
-      po_amount: parseFloat(document.getElementById('add_amount').value),
+      po_amount:  parseFloat(document.getElementById('add_amount').value),
       po_message: document.getElementById('add_message').value,
-      bb_id:  document.getElementById('add_bb_id').value,
-      oa_id:  document.getElementById('add_oa_id').value,
-      ba_id:  document.getElementById('add_ba_id').value,
+      bb_id:      document.getElementById('add_bb_id').value,
+      oa_id:      document.getElementById('add_oa_id').value,
+      ba_id:      document.getElementById('add_ba_id').value,
     }]};
-    showResponse('POST /api/po_new_add', '...', 'Bezig...');
+    setResp('po-add', 'POST /api/po_new_add', '...', 'Bezig...');
     try {
       const res  = await fetch('/api/po_new_add', {
         method: 'POST',
@@ -315,12 +977,11 @@
         body: JSON.stringify(body),
       });
       const text = await res.text();
-      showResponse('POST /api/po_new_add', res.status, text);
+      setResp('po-add', 'POST /api/po_new_add', res.status, text);
     } catch(e) {
-      showResponse('POST /api/po_new_add', 'ERROR', e.message);
+      setResp('po-add', 'POST /api/po_new_add', 'ERROR', e.message);
     }
   }
 </script>
-
 </body>
 </html>
