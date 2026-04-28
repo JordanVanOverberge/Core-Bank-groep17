@@ -4,29 +4,12 @@
 -- Internationale week – Bank team
 -- ============================================================
 
--- Drop tables in correct order (foreign keys first)
-DROP TABLE IF EXISTS ack_out;
-DROP TABLE IF EXISTS ack_in;
-DROP TABLE IF EXISTS po_out;
-DROP TABLE IF EXISTS po_in;
-DROP TABLE IF EXISTS po_new;
-DROP TABLE IF EXISTS transactions;
-DROP TABLE IF EXISTS log;
-DROP TABLE IF EXISTS accounts;
-
--- ============================================================
--- ACCOUNTS
--- ============================================================
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
     id          VARCHAR(34)     NOT NULL PRIMARY KEY,
     balance     DECIMAL(10,2)   NOT NULL DEFAULT 0.00
 );
 
--- ============================================================
--- TRANSACTIONS
--- amount: positive = incoming (BA), negative = outgoing (OA)
--- ============================================================
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id          VARCHAR(50)     NOT NULL PRIMARY KEY,
     amount      DECIMAL(10,2)   NOT NULL,
     datetime    DATETIME        NOT NULL,
@@ -37,10 +20,7 @@ CREATE TABLE transactions (
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
--- ============================================================
--- LOG
--- ============================================================
-CREATE TABLE log (
+CREATE TABLE IF NOT EXISTS log (
     id          INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
     datetime    DATETIME        NOT NULL,
     message     TEXT            NULL,
@@ -61,10 +41,7 @@ CREATE TABLE log (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- PO_NEW — Outgoing POs created by this bank as OB
--- ============================================================
-CREATE TABLE po_new (
+CREATE TABLE IF NOT EXISTS po_new (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NOT NULL,
@@ -81,10 +58,7 @@ CREATE TABLE po_new (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- PO_OUT — POs sent to the clearing bank
--- ============================================================
-CREATE TABLE po_out (
+CREATE TABLE IF NOT EXISTS po_out (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NOT NULL,
@@ -101,10 +75,7 @@ CREATE TABLE po_out (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- PO_IN — Incoming POs received from the clearing bank
--- ============================================================
-CREATE TABLE po_in (
+CREATE TABLE IF NOT EXISTS po_in (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NOT NULL,
@@ -121,10 +92,7 @@ CREATE TABLE po_in (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- ACK_IN — Acknowledgements received from CB (this bank = OB)
--- ============================================================
-CREATE TABLE ack_in (
+CREATE TABLE IF NOT EXISTS ack_in (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NOT NULL,
@@ -141,10 +109,7 @@ CREATE TABLE ack_in (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- ACK_OUT — Acknowledgements sent to CB (this bank = BB)
--- ============================================================
-CREATE TABLE ack_out (
+CREATE TABLE IF NOT EXISTS ack_out (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NOT NULL,
@@ -161,10 +126,8 @@ CREATE TABLE ack_out (
     bb_datetime DATETIME        NULL
 );
 
--- ============================================================
--- SEED DATA — 20 accounts for BSCHBEBB, 5000.00 each
--- ============================================================
-INSERT INTO accounts (id, balance) VALUES
+-- Seed: only inserts if account does not already exist
+INSERT IGNORE INTO accounts (id, balance) VALUES
 ('BE68539007547034', 5000.00),
 ('BE43068999999501', 5000.00),
 ('BE11435411161155', 5000.00),

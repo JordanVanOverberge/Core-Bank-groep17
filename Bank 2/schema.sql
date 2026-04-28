@@ -3,21 +3,12 @@
 -- Bank: GKCCBEBB
 -- ============================================================
 
-DROP TABLE IF EXISTS ack_out;
-DROP TABLE IF EXISTS ack_in;
-DROP TABLE IF EXISTS po_out;
-DROP TABLE IF EXISTS po_in;
-DROP TABLE IF EXISTS po_new;
-DROP TABLE IF EXISTS transactions;
-DROP TABLE IF EXISTS log;
-DROP TABLE IF EXISTS accounts;
-
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
     id          VARCHAR(34)     NOT NULL PRIMARY KEY,
     balance     DECIMAL(10,2)   NOT NULL DEFAULT 0.00
 );
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id          VARCHAR(50)     NOT NULL PRIMARY KEY,
     amount      DECIMAL(10,2)   NOT NULL,
     datetime    DATETIME        NOT NULL,
@@ -26,7 +17,7 @@ CREATE TABLE transactions (
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
-CREATE TABLE log (
+CREATE TABLE IF NOT EXISTS log (
     id          INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
     datetime    DATETIME        NOT NULL,
     message     TEXT            NULL,
@@ -34,7 +25,7 @@ CREATE TABLE log (
     po_id       VARCHAR(50)     NULL
 );
 
-CREATE TABLE po_new (
+CREATE TABLE IF NOT EXISTS po_new (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NULL,
@@ -51,7 +42,7 @@ CREATE TABLE po_new (
     bb_datetime DATETIME        NULL
 );
 
-CREATE TABLE po_out (
+CREATE TABLE IF NOT EXISTS po_out (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NULL,
@@ -68,7 +59,7 @@ CREATE TABLE po_out (
     bb_datetime DATETIME        NULL
 );
 
-CREATE TABLE po_in (
+CREATE TABLE IF NOT EXISTS po_in (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NULL,
@@ -85,7 +76,7 @@ CREATE TABLE po_in (
     bb_datetime DATETIME        NULL
 );
 
-CREATE TABLE ack_in (
+CREATE TABLE IF NOT EXISTS ack_in (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NULL,
@@ -102,7 +93,7 @@ CREATE TABLE ack_in (
     bb_datetime DATETIME        NULL
 );
 
-CREATE TABLE ack_out (
+CREATE TABLE IF NOT EXISTS ack_out (
     po_id       VARCHAR(50)     NOT NULL PRIMARY KEY,
     po_amount   DECIMAL(10,2)   NOT NULL,
     po_message  VARCHAR(255)    NULL,
@@ -119,8 +110,8 @@ CREATE TABLE ack_out (
     bb_datetime DATETIME        NULL
 );
 
--- Seed: 20 accounts for GKCCBEBB, 5000.00 each
-INSERT INTO accounts (id, balance) VALUES
+-- Seed: only inserts if account does not already exist
+INSERT IGNORE INTO accounts (id, balance) VALUES
 ('BE71096123456789', 5000.00),
 ('BE83138822446613', 5000.00),
 ('BE24300912345678', 5000.00),
