@@ -55,7 +55,7 @@
   <div class="section">
     <div class="section-title">Accounts</div>
     <div class="grid">
-      <button class="btn" onclick="api('GET','/api/accounts','Accounts ophalen')">
+      <button class="btn" onclick="loadAccounts()">
         <div class="btn-method get">GET</div>
         <div class="btn-name">Alle rekeningen</div>
         <div class="btn-endpoint">/api/accounts</div>
@@ -142,17 +142,57 @@
     f.style.display = f.style.display === 'block' ? 'none' : 'block';
   }
 
-  function showResponse(title, status, body) {
+  function showResponse(title, status, body, html) {
     const panel = document.getElementById('responsePanel');
     panel.style.display = 'block';
     document.getElementById('responseTitle').textContent = title;
     const st = document.getElementById('responseStatus');
     st.textContent = 'STATUS ' + status;
     st.className = String(status).startsWith('2') ? 'status-ok' : 'status-err';
-    let display = body;
-    try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
-    document.getElementById('responseBody').textContent = display;
+    const bodyEl = document.getElementById('responseBody');
+    if (html) {
+      bodyEl.style.whiteSpace = 'normal';
+      bodyEl.innerHTML = html;
+    } else {
+      bodyEl.style.whiteSpace = 'pre-wrap';
+      let display = body;
+      try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
+      bodyEl.textContent = display;
+    }
     panel.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function loadAccounts() {
+    showResponse('Accounts ophalen', '...', 'Bezig...');
+    try {
+      const res = await fetch('/api/accounts');
+      const data = await res.json();
+      const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
+      const rows = data.map(a => `
+        <tr>
+          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${a.id}</td>
+          <td style="color:${parseFloat(a.balance) > 0 ? '#68d391' : '#fc8181'};font-weight:bold;text-align:right">
+            €${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}
+          </td>
+          ${a.owner ? `<td style="color:#a0aec0">${a.owner}</td>` : ''}
+        </tr>`).join('');
+      const html = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px">
+          <span style="color:#718096">${data.length} rekeningen</span>
+          <span style="color:#48bb78">Totaal: €${total.toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
+        </div>
+        <table class="accounts-table">
+          <thead><tr>
+            <th>IBAN</th>
+            <th style="text-align:right">Saldo</th>
+            ${data[0]?.owner !== undefined ? '<th>Eigenaar</th>' : ''}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      showResponse('Accounts ophalen', res.status, null, html);
+    } catch(e) {
+      showResponse('Accounts ophalen', 'ERROR', e.message);
+    }
   }
 
   async function api(method, url, title) {

@@ -1,11 +1,13 @@
 const express = require('express');
 const axios = require('axios');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const faker = require('faker');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- IN-MEMORY DATABASE ---
 let db = {
@@ -53,10 +55,7 @@ const generateRandomPO = () => {
     };
 };
 
-// ─────────────────────────────────────────────
-// GET /  → redirect to /api/help
-// ─────────────────────────────────────────────
-app.get('/', (req, res) => res.redirect('/api/help'));
+// GET / → served by express.static (public/index.html)
 
 // ─────────────────────────────────────────────
 // GET /api/help
@@ -294,7 +293,7 @@ app.get('/api/ack_out', async (req, res) => {
 // ─────────────────────────────────────────────
 // START SERVER
 // ─────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3003;
 app.listen(PORT, () => {
     console.log(`[${MY_BIC}] ${MY_BANK_NAME} running on http://localhost:${PORT}`);
     console.log(`CB: ${CB_URL}`);
