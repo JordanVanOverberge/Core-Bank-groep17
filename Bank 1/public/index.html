@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pingfin — Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+    header { border-bottom: 1px solid #2d3748; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 14px; letter-spacing: 0.15em; color: #f7c948; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; display: inline-block; margin-right: 6px; }
+    .server-url { font-size: 12px; color: #718096; }
+    main { padding: 2rem; max-width: 960px; margin: 0 auto; }
+    .section { margin-bottom: 2rem; }
+    .section-title { font-size: 10px; letter-spacing: 0.15em; color: #718096; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #2d3748; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .btn { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; color: inherit; width: 100%; }
+    .btn:hover { background: #2d3748; border-color: #4a5568; }
+    .btn:active { transform: scale(0.98); }
+    .btn-method { font-size: 10px; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 5px; }
+    .btn-name { font-size: 13px; color: #e2e8f0; margin-bottom: 3px; }
+    .btn-endpoint { font-size: 11px; color: #718096; }
+    .get { color: #48bb78; }
+    .post { color: #f6ad55; }
+    .po-form { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .field label { display: block; font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 4px; padding: 7px 10px; font-size: 12px; font-family: 'Courier New', monospace; color: #e2e8f0; }
+    .field input:focus { outline: none; border-color: #f7c948; }
+    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; letter-spacing: 0.05em; }
+    .submit-btn:hover { background: #ecc333; }
+    .response-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-top: 1.5rem; display: none; }
+    .response-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2d3748; }
+    .response-title { font-size: 11px; color: #718096; letter-spacing: 0.1em; text-transform: uppercase; }
+    .status-ok { font-size: 11px; color: #48bb78; }
+    .status-err { font-size: 11px; color: #fc8181; }
+    .response-body { padding: 14px; font-size: 12px; color: #a0aec0; white-space: pre-wrap; max-height: 280px; overflow-y: auto; line-height: 1.7; }
+    .accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    .accounts-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #718096; border-bottom: 1px solid #2d3748; }
+    .accounts-table td { padding: 8px 12px; border-bottom: 1px solid #1a202c; color: #e2e8f0; }
+    .accounts-table tr:hover td { background: #2d3748; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PINGFIN — ADMIN PANEL</h1>
+  <span class="server-url"><span class="dot"></span>localhost:3000</span>
+</header>
+
+<main>
+
+  <!-- ACCOUNTS -->
+  <div class="section">
+    <div class="section-title">Accounts</div>
+    <div class="grid">
+      <button class="btn" onclick="api('GET','/api/accounts','Accounts ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Alle rekeningen</div>
+        <div class="btn-endpoint">/api/accounts</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- TOKEN -->
+  <div class="section">
+    <div class="section-title">Authenticatie</div>
+    <div class="grid">
+      <button class="btn" onclick="api('GET','/api/token','Token ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Genereer CB token</div>
+        <div class="btn-endpoint">/api/token</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- PAYMENT ORDERS -->
+  <div class="section">
+    <div class="section-title">Payment Orders</div>
+    <div class="grid">
+      <button class="btn" onclick="togglePoForm()">
+        <div class="btn-method post">POST</div>
+        <div class="btn-name">Verstuur PO naar CB</div>
+        <div class="btn-endpoint">/api/po</div>
+      </button>
+      <button class="btn" onclick="api('GET','/api/po','Eigen PO\'s ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Eigen PO's bekijken</div>
+        <div class="btn-endpoint">/api/po</div>
+      </button>
+      <button class="btn" onclick="api('GET','/api/po/incoming','Inkomende PO\'s verwerken')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Verwerk inkomende PO's</div>
+        <div class="btn-endpoint">/api/po/incoming</div>
+      </button>
+      <button class="btn" onclick="api('GET','/api/po/ack','ACK\'s ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Check gefaalde PO's</div>
+        <div class="btn-endpoint">/api/po/ack</div>
+      </button>
+    </div>
+
+    <div class="po-form" id="poForm">
+      <div class="form-grid">
+        <div class="field"><label>Bedrag (€)</label><input id="po_amount" value="100" /></div>
+        <div class="field"><label>BIC ontvanger (BB)</label><input id="bb_id" value="AXABBE22" /></div>
+        <div class="field"><label>IBAN betaler (OA)</label><input id="oa_id" value="BE68539007547034" /></div>
+        <div class="field"><label>IBAN ontvanger (BA)</label><input id="ba_id" value="BE99888877776666" /></div>
+        <div class="field"><label>Bericht</label><input id="po_message" value="Testbetaling" /></div>
+      </div>
+      <button class="submit-btn" onclick="submitPo()">Verstuur PO</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="section">
+    <div class="section-title">Log & statistieken</div>
+    <div class="grid">
+      <button class="btn" onclick="api('GET','/api/log','Logs ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Bekijk logs</div>
+        <div class="btn-endpoint">/api/log</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- RESPONSE -->
+  <div class="response-panel" id="responsePanel">
+    <div class="response-header">
+      <span class="response-title" id="responseTitle">Response</span>
+      <span id="responseStatus"></span>
+    </div>
+    <div class="response-body" id="responseBody">Laden...</div>
+  </div>
+
+</main>
+
+<script>
+  function togglePoForm() {
+    const f = document.getElementById('poForm');
+    f.style.display = f.style.display === 'block' ? 'none' : 'block';
+  }
+
+  function showResponse(title, status, body) {
+    const panel = document.getElementById('responsePanel');
+    panel.style.display = 'block';
+    document.getElementById('responseTitle').textContent = title;
+    const st = document.getElementById('responseStatus');
+    st.textContent = 'STATUS ' + status;
+    st.className = String(status).startsWith('2') ? 'status-ok' : 'status-err';
+    let display = body;
+    try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
+    document.getElementById('responseBody').textContent = display;
+    panel.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function api(method, url, title) {
+    showResponse(title, '...', 'Bezig...');
+    try {
+      const res = await fetch(url, { method });
+      const text = await res.text();
+      showResponse(title, res.status, text);
+    } catch(e) {
+      showResponse(title, 'ERROR', e.message);
+    }
+  }
+
+  async function submitPo() {
+    const body = {
+      po_amount: parseFloat(document.getElementById('po_amount').value),
+      po_message: document.getElementById('po_message').value,
+      bb_id: document.getElementById('bb_id').value,
+      oa_id: document.getElementById('oa_id').value,
+      ba_id: document.getElementById('ba_id').value,
+    };
+    showResponse('POST /api/po', '...', 'Bezig...');
+    try {
+      const res = await fetch('/api/po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      showResponse('POST /api/po', res.status, text);
+    } catch(e) {
+      showResponse('POST /api/po', 'ERROR', e.message);
+    }
+  }
+</script>
+
+</body>
+</html>
