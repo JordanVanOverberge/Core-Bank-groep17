@@ -10,22 +10,7 @@ const fail = (res, msg, status = 500, code = null) =>
 
 // GET /api/help
 router.get('/help', (_req, res) => {
-  ok(res, [
-    { method: 'GET',  path: '/api/help',              auth: false, desc: 'Deze helplijst' },
-    { method: 'GET',  path: '/api/info',              auth: false, desc: 'Bank info (BIC, naam, teamleden)' },
-    { method: 'GET',  path: '/api/accounts',          auth: false, desc: 'Alle rekeningen' },
-    { method: 'GET',  path: '/api/po_new_generate',   auth: false, desc: 'Willekeurige POs genereren – params: count, min, max' },
-    { method: 'POST', path: '/api/po_new_add',        auth: false, desc: 'Manueel POs toevoegen aan po_new' },
-    { method: 'GET',  path: '/api/po_new_process',    auth: false, desc: 'POs valideren en versturen naar CB' },
-    { method: 'GET',  path: '/api/cb/poll_po',        auth: false, desc: 'Inkomende POs ophalen van CB en verwerken' },
-    { method: 'GET',  path: '/api/cb/poll_ack',       auth: false, desc: 'Inkomende ACKs ophalen van CB' },
-    { method: 'POST', path: '/api/po_in',             auth: true,  desc: 'POs ontvangen van andere bank (Bearer vereist)' },
-    { method: 'GET',  path: '/api/po_out',            auth: false, desc: 'Inhoud po_out tabel' },
-    { method: 'GET',  path: '/api/ack_out',           auth: false, desc: 'Inhoud ack_out tabel' },
-    { method: 'GET',  path: '/api/ack_in',            auth: false, desc: 'Inhoud ack_in tabel' },
-    { method: 'GET',  path: '/api/transactions',      auth: false, desc: 'Alle transacties' },
-    { method: 'GET',  path: '/api/logs',              auth: false, desc: 'Alle logs (nieuwste eerst)' },
-  ], 'CoreBank 2 (GKCCBEBB) – PingFin 2026 API');
+  res.redirect('https://spotty-divan-1b9.notion.site/PingFin-API-Documentation-GKCCBEBB-350f0625fdc2807d97dfcca8b8dd1561');
 });
 
 // GET /api/info
