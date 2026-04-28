@@ -20,21 +20,21 @@ app.get('/', (req, res) => res.redirect('/api/help'));
 
 app.get('/api/help', (req, res) =>
   ok(res, [
-    { method: 'GET',  url: '/api/help',            description: 'This help page' },
-    { method: 'GET',  url: '/api/info',            description: 'Bank info (BIC, name, team members)' },
-    { method: 'GET',  url: '/api/token',           description: 'Get a fresh CB auth token' },
-    { method: 'GET',  url: '/api/accounts',        description: 'List all accounts' },
-    { method: 'GET',  url: '/api/po_new_generate', description: 'Generate random POs – params: count, min, max' },
-    { method: 'POST', url: '/api/po_new_add',      description: 'Add POs to po_new queue' },
-    { method: 'GET',  url: '/api/po_new_process',  description: 'Validate and send queued POs to CB' },
-    { method: 'GET',  url: '/api/cb/poll_po',      description: 'Fetch and process incoming POs from CB (BB flow)' },
-    { method: 'GET',  url: '/api/cb/poll_ack',     description: 'Fetch ACKs for sent POs from CB' },
-    { method: 'GET',  url: '/api/po_out',          description: 'Contents of po_out table' },
-    { method: 'GET',  url: '/api/ack_in',          description: 'Contents of ack_in table' },
-    { method: 'GET',  url: '/api/ack_out',         description: 'Contents of ack_out table' },
-    { method: 'GET',  url: '/api/transactions',    description: 'All transactions' },
-    { method: 'GET',  url: '/api/logs',            description: 'All logs (newest first)' },
-  ], `PingFin Bank — BIC: ${process.env.BANK_BIC}`)
+    { method: 'GET',  path: '/api/help',            auth: false, desc: 'Overzicht van alle endpoints' },
+    { method: 'GET',  path: '/api/info',            auth: false, desc: 'Bank info (BIC, naam, teamleden)' },
+    { method: 'GET',  path: '/api/token',           auth: false, desc: 'Vers CB auth token ophalen' },
+    { method: 'GET',  path: '/api/accounts',        auth: false, desc: 'Alle rekeningen' },
+    { method: 'GET',  path: '/api/po_new_generate', auth: false, desc: 'Willekeurige POs genereren – params: count, min, max' },
+    { method: 'POST', path: '/api/po_new_add',      auth: false, desc: 'POs toevoegen aan po_new wachtrij' },
+    { method: 'GET',  path: '/api/po_new_process',  auth: false, desc: 'POs valideren en versturen naar CB' },
+    { method: 'GET',  path: '/api/cb/poll_po',      auth: false, desc: 'Inkomende POs ophalen van CB en verwerken (BB flow)' },
+    { method: 'GET',  path: '/api/cb/poll_ack',     auth: false, desc: 'ACKs ophalen van CB voor verstuurde POs' },
+    { method: 'GET',  path: '/api/po_out',          auth: false, desc: 'Inhoud po_out tabel' },
+    { method: 'GET',  path: '/api/ack_in',          auth: false, desc: 'Inhoud ack_in tabel' },
+    { method: 'GET',  path: '/api/ack_out',         auth: false, desc: 'Inhoud ack_out tabel' },
+    { method: 'GET',  path: '/api/transactions',    auth: false, desc: 'Alle transacties' },
+    { method: 'GET',  path: '/api/logs',            auth: false, desc: 'Alle logs (nieuwste eerst)' },
+  ], `PingFin Bank 1 — BIC: ${process.env.BANK_BIC}`)
 );
 
 app.get('/api/info', (req, res) =>
