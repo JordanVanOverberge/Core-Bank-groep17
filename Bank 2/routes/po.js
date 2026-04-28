@@ -20,12 +20,18 @@ const CB_CODES = {
   4001: 'Interne betaling – niet naar CB sturen',
   4002: 'Bedrag is te hoog (max 500 euro)',
   4003: 'Bedrag is negatief of nul',
+  4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
+  4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
+  4006: 'PO_ID ongeldig (moet beginnen met GKCCBEBB_)'
 };
 
 function localValidate(po) {
   if (po.po_amount <= 0)              return 4003;
   if (po.po_amount > MAX_AMOUNT)      return 4002;
   if (po.bb_id === process.env.BIC)   return 4001; // internal payment
+  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC
+  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006; // invalid PO_ID
   return null;
 }
 
@@ -183,19 +189,7 @@ router.get('/po_new_process', async (_req, res) => {
       try { token = await getCBToken(); }
       catch (e) { return fail(res, `CB token fout: ${e.message}`, 502, 5002); }
 
-      let cbRes;
-      try {
-        cbRes = await fetch(`${process.env.CB_URL}/po_in`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ data: external })
-        });
-        cbResult = await cbRes.json();
-        if (!cbRes.ok) return fail(res, `CB weigerde POs: ${JSON.stringify(cbResult)}`, 502, 5002);
-      } catch (e) {
-        return fail(res, `CB niet bereikbaar: ${e.message}`, 502, 5002);
-      }
-
+      // Verplaats POs naar po_out eerst
       for (const po of external) {
         const ts = now();
         await pool.query(
@@ -207,8 +201,47 @@ router.get('/po_new_process', async (_req, res) => {
         try {
           await pool.query(
             'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-            [ts, 'po_out', 'PO verstuurd naar CB', po.po_id]);
+            [ts, 'po_out', 'PO klaar voor verzending naar CB', po.po_id]);
         } catch (_) {}
+      }
+
+      // Probeer naar CB te sturen
+      try {
+        const cbRes = await fetch(`${process.env.CB_URL}/po_in`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ data: external })
+        });
+        cbResult = await cbRes.json();
+        if (!cbRes.ok) {
+          // CB weigerde, maar POs zijn al in po_out
+          for (const po of external) {
+            try {
+              await pool.query(
+                'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+                [now(), 'po_out', `CB weigerde PO: ${JSON.stringify(cbResult)}`, po.po_id]);
+            } catch (_) {}
+          }
+          return fail(res, `CB weigerde POs: ${JSON.stringify(cbResult)}`, 502, 5002);
+        }
+        // Succes, update log
+        for (const po of external) {
+          try {
+            await pool.query(
+              'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+              [now(), 'po_out', 'PO verstuurd naar CB', po.po_id]);
+          } catch (_) {}
+        }
+      } catch (e) {
+        // CB niet bereikbaar, POs blijven in po_out
+        for (const po of external) {
+          try {
+            await pool.query(
+              'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+              [now(), 'po_out', 'CB niet bereikbaar - PO blijft in po_out', po.po_id]);
+          } catch (_) {}
+        }
+        return fail(res, `CB niet bereikbaar: ${e.message}`, 502, 5002);
       }
     }
 
