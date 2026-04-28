@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CoreBank 2 — Admin Panel</title>
+  <title>PingFin — Admin Panel</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
@@ -23,19 +23,18 @@
     .btn-endpoint { font-size: 11px; color: #718096; }
     .get { color: #48bb78; }
     .post { color: #f6ad55; }
-    .generate-form { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
-    .po-form { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
+    .form-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .field label { display: block; font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
     .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 4px; padding: 7px 10px; font-size: 12px; font-family: 'Courier New', monospace; color: #e2e8f0; }
     .field input:focus { outline: none; border-color: #f7c948; }
-    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; letter-spacing: 0.05em; }
+    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; }
     .submit-btn:hover { background: #ecc333; }
     .response-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-top: 1.5rem; display: none; }
     .response-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2d3748; }
     .response-title { font-size: 11px; color: #718096; letter-spacing: 0.1em; text-transform: uppercase; }
-    .status-ok { font-size: 11px; color: #48bb78; }
+    .status-ok  { font-size: 11px; color: #48bb78; }
     .status-err { font-size: 11px; color: #fc8181; }
     .response-body { padding: 14px; font-size: 12px; color: #a0aec0; white-space: pre-wrap; max-height: 320px; overflow-y: auto; line-height: 1.7; }
     .accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
@@ -47,8 +46,8 @@
 <body>
 
 <header>
-  <h1>COREBANK 2 — ADMIN PANEL</h1>
-  <span class="server-url"><span class="dot"></span>localhost:3001</span>
+  <h1 id="headerTitle">PINGFIN — ADMIN PANEL</h1>
+  <span class="server-url"><span class="dot"></span><span id="serverUrl"></span></span>
 </header>
 
 <main>
@@ -77,7 +76,19 @@
     </div>
   </div>
 
-  <!-- PAYMENT ORDERS — OB FLOW -->
+  <!-- AUTHENTICATIE -->
+  <div class="section">
+    <div class="section-title">Authenticatie</div>
+    <div class="grid">
+      <button class="btn" onclick="api('GET','/api/token','Token ophalen')">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">Genereer CB token</div>
+        <div class="btn-endpoint">/api/token</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- OB FLOW -->
   <div class="section">
     <div class="section-title">Payment Orders — OB flow</div>
     <div class="grid">
@@ -103,7 +114,7 @@
       </button>
     </div>
 
-    <div class="generate-form" id="generateForm">
+    <div class="form-panel" id="generateForm">
       <div class="form-grid-3">
         <div class="field"><label>Aantal</label><input id="gen_count" value="3" /></div>
         <div class="field"><label>Min (€)</label><input id="gen_min" value="1" /></div>
@@ -112,19 +123,19 @@
       <button class="submit-btn" onclick="generatePos()">Genereer</button>
     </div>
 
-    <div class="po-form" id="poAddForm">
+    <div class="form-panel" id="poAddForm">
       <div class="form-grid">
         <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
-        <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="BSCHBEBB" /></div>
-        <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE71096123456789" /></div>
-        <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE68539007547034" /></div>
+        <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
+        <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
+        <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
         <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
       </div>
       <button class="submit-btn" onclick="addPo()">Toevoegen</button>
     </div>
   </div>
 
-  <!-- CB POLLING — BB FLOW -->
+  <!-- CB POLLING / BB FLOW -->
   <div class="section">
     <div class="section-title">CB Polling — BB flow</div>
     <div class="grid">
@@ -151,7 +162,7 @@
     </div>
   </div>
 
-  <!-- DATA -->
+  <!-- DATA & LOGS -->
   <div class="section">
     <div class="section-title">Data & logs</div>
     <div class="grid">
@@ -185,6 +196,13 @@
 </main>
 
 <script>
+  // Set header info from server
+  document.getElementById('serverUrl').textContent = window.location.host;
+  fetch('/api/info').then(r => r.json()).then(j => {
+    if (j.data) document.getElementById('headerTitle').textContent =
+      `${j.data.name || j.data.bic} — ADMIN PANEL`;
+  }).catch(() => {});
+
   function toggleForm(id) {
     const el = document.getElementById(id);
     el.style.display = el.style.display === 'block' ? 'none' : 'block';
@@ -213,7 +231,7 @@
   async function api(method, url, title) {
     showResponse(title, '...', 'Bezig...');
     try {
-      const res = await fetch(url, { method });
+      const res  = await fetch(url, { method });
       const text = await res.text();
       showResponse(title, res.status, text);
     } catch(e) {
@@ -230,7 +248,7 @@
       const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
       const rows = data.map(a => `
         <tr>
-          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${a.id}</td>
+          <td style="font-family:'Courier New',monospace;font-size:11px">${a.id}</td>
           <td style="color:${parseFloat(a.balance) > 0 ? '#68d391' : '#fc8181'};font-weight:bold;text-align:right">
             €${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}
           </td>
@@ -282,18 +300,16 @@
   }
 
   async function addPo() {
-    const body = {
-      data: [{
-        po_amount: parseFloat(document.getElementById('add_amount').value),
-        po_message: document.getElementById('add_message').value,
-        bb_id: document.getElementById('add_bb_id').value,
-        oa_id: document.getElementById('add_oa_id').value,
-        ba_id: document.getElementById('add_ba_id').value,
-      }]
-    };
+    const body = { data: [{
+      po_amount: parseFloat(document.getElementById('add_amount').value),
+      po_message: document.getElementById('add_message').value,
+      bb_id:  document.getElementById('add_bb_id').value,
+      oa_id:  document.getElementById('add_oa_id').value,
+      ba_id:  document.getElementById('add_ba_id').value,
+    }]};
     showResponse('POST /api/po_new_add', '...', 'Bezig...');
     try {
-      const res = await fetch('/api/po_new_add', {
+      const res  = await fetch('/api/po_new_add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

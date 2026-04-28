@@ -156,7 +156,7 @@ router.get('/po_new_process', async (_req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+        `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
          SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
          FROM po_new WHERE po_id = ?`, [po.po_id]
       );
@@ -193,7 +193,7 @@ router.get('/po_new_process', async (_req, res) => {
       for (const po of external) {
         const ts = now();
         await pool.query(
-          `INSERT INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+          `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
            SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
            FROM po_new WHERE po_id = ?`, [po.po_id]
         );

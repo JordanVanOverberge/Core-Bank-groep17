@@ -1,147 +1,259 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const { pool } = require('../db');
 const cb = require('../middleware/cbApi');
 
-const BIC = () => process.env.BANK_BIC;
-const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+const BIC   = () => process.env.BANK_BIC;
+const now   = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+const genId = () => `${BIC()}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
-const ok = (res, data = null, message = null, status = 200) =>
-  res.status(status).json({ ok: true, status, code: 2000, message, data });
+const ok   = (res, data = null, msg = null, status = 200) =>
+  res.status(status).json({ ok: true,  status, code: 2000, message: msg, data });
+const fail = (res, code, msg, status = 400) =>
+  res.status(status).json({ ok: false, status, code, message: msg, data: null });
 
-const fail = (res, code, message, status = 400) =>
-  res.status(status).json({ ok: false, status, code, message, data: null });
+const MAX_AMOUNT = 500;
+const CB_CODES = {
+  4001: 'Interne betaling – niet naar CB sturen',
+  4002: `Bedrag is te hoog (max ${MAX_AMOUNT} euro)`,
+  4003: 'Bedrag is negatief of nul',
+};
 
-// POST /api/po — create new outgoing PO (OB flow)
-router.post('/', async (req, res) => {
+function localValidate(po) {
+  if (po.po_amount <= 0)         return 4003;
+  if (po.po_amount > MAX_AMOUNT) return 4002;
+  if (po.bb_id === BIC())        return 4001;
+  return null;
+}
+
+// ─── GET /api/po_new_generate ─────────────────────────────────────────────────
+router.get('/po_new_generate', async (req, res) => {
+  const count = Math.min(parseInt(req.query.count) || 3, 20);
+  const min   = Math.max(parseFloat(req.query.min)  || 1,   0.01);
+  const max   = Math.min(parseFloat(req.query.max)  || 500, MAX_AMOUNT);
+
+  if (min >= max)
+    return fail(res, 4000, 'min moet kleiner zijn dan max', 400);
+
   try {
-    const { po_amount, po_message, bb_id, oa_id, ba_id } = req.body;
+    const [accounts] = await pool.query('SELECT id FROM accounts');
+    if (!accounts.length)
+      return fail(res, 4000, 'Geen accounts in database', 400);
 
-    if (!po_amount || po_amount <= 0)
-      return fail(res, 4003, 'Bedrag moet groter zijn dan 0');
-    if (po_amount > 500)
-      return fail(res, 4002, 'Bedrag mag niet hoger zijn dan 500 euro');
-    if (bb_id === BIC())
-      return fail(res, 4001, 'Interne betalingen mogen niet naar de CB worden gestuurd');
+    let externalBanks = [];
+    try {
+      const data = await cb.fetchBanks();
+      externalBanks = (data.data || []).filter(b => b.bic !== BIC());
+    } catch (_) {}
 
-    const po_id = `${BIC()}_${Date.now()}`;
-    const po_datetime = now();
-    const ob_code = 2000;
-    const ob_datetime = now();
+    const generated = [];
+    for (let i = 0; i < count; i++) {
+      const oa     = accounts[Math.floor(Math.random() * accounts.length)];
+      const amount = parseFloat((Math.random() * (max - min) + min).toFixed(2));
+      const po_id  = genId();
 
-    const [account] = await pool.query('SELECT * FROM accounts WHERE id = ?', [oa_id]);
-    if (!account.length)
-      return fail(res, 'ACCOUNT_NOT_FOUND', `Rekening ${oa_id} niet gevonden`);
-    if (account[0].balance < po_amount)
-      return fail(res, 'INSUFFICIENT_FUNDS', 'Onvoldoende saldo');
+      let bb_id, ba_id;
+      if (externalBanks.length > 0 && Math.random() > 0.3) {
+        const bank = externalBanks[Math.floor(Math.random() * externalBanks.length)];
+        bb_id = bank.bic;
+        ba_id = bank.iban ?? `BE${String(Math.floor(Math.random() * 1e14)).padStart(14, '0')}`;
+      } else {
+        const dest = accounts[Math.floor(Math.random() * accounts.length)];
+        bb_id = BIC();
+        ba_id = dest.id;
+      }
 
-    const po = { po_id, po_amount, po_message, po_datetime, ob_id: BIC(), oa_id, ob_code, ob_datetime, bb_id, ba_id };
+      await pool.query(
+        `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [po_id, amount, `Test betaling ${i + 1}`, now(), BIC(), oa.id, bb_id, ba_id]
+      );
+      generated.push({ po_id, po_amount: amount, bb_id, ba_id });
+    }
 
-    await pool.query(
-      `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [po.po_id, po.po_amount, po.po_message, po.po_datetime, po.ob_id, po.oa_id, po.ob_code, po.ob_datetime, po.bb_id, po.ba_id]
-    );
-
-    const cbResponse = await cb.sendPoToCb([po]);
-
-    await pool.query(
-      `INSERT INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [po.po_id, po.po_amount, po.po_message, po.po_datetime, po.ob_id, po.oa_id, po.ob_code, po.ob_datetime, po.bb_id, po.ba_id]
-    );
-
-    await pool.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po_amount, oa_id]);
-
-    await pool.query(
-      `INSERT INTO log (datetime, message, type, po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
-       VALUES (?, 'PO aangemaakt en verstuurd naar CB', 'PO_OUT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [now(), po.po_id, po.po_amount, po.po_message, po.po_datetime, po.ob_id, po.oa_id, po.ob_code, po.ob_datetime, po.bb_id, po.ba_id]
-    );
-
-    return ok(res, [po], `PO ${po_id} verstuurd naar CB`, 201);
+    return ok(res, generated, `${count} willekeurige PO('s) gegenereerd`);
   } catch (err) {
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
 
-// GET /api/po — list own outgoing POs
-router.get('/', async (req, res) => {
+// ─── POST /api/po_new_add ─────────────────────────────────────────────────────
+router.post('/po_new_add', async (req, res) => {
+  const pos = req.body?.data;
+  if (!Array.isArray(pos) || pos.length === 0)
+    return fail(res, 4000, 'Geen PO data (verwacht: { "data": [...] })', 400);
+
   try {
-    const [rows] = await pool.query('SELECT * FROM po_new ORDER BY po_datetime DESC');
-    return ok(res, rows, `${rows.length} PO(s) gevonden`);
+    for (const po of pos) {
+      await pool.query(
+        `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [genId(), po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
+      );
+    }
+    return ok(res, [], `${pos.length} PO('s) toegevoegd aan po_new`);
   } catch (err) {
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
 
-// GET /api/po/incoming — fetch and process incoming POs from CB (BB flow)
-router.get('/incoming', async (req, res) => {
+// ─── GET /api/po_new_process ──────────────────────────────────────────────────
+router.get('/po_new_process', async (_req, res) => {
   try {
-    const data = await cb.fetchPoFromCb();
-    const pos = data.data || [];
+    const [pos] = await pool.query('SELECT * FROM po_new');
+    if (pos.length === 0) return ok(res, [], 'Geen POs om te verwerken');
+
+    const internal = [], external = [], rejected = [];
 
     for (const po of pos) {
+      const errCode = localValidate(po);
+      if (errCode === 4001) { internal.push(po); continue; }
+      if (errCode)          { rejected.push({ po_id: po.po_id, code: errCode, reason: CB_CODES[errCode] }); continue; }
+      external.push(po);
+    }
+
+    // Internal payments (no CB needed)
+    for (const po of internal) {
+      const ts = now();
+      const [senderRows] = await pool.query('SELECT balance FROM accounts WHERE id = ?', [po.oa_id]);
+      if (!senderRows.length || senderRows[0].balance < po.po_amount) {
+        rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
+        await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+        await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          [ts, 'po_rejected', 'Geweigerd: onvoldoende saldo', po.po_id]);
+        continue;
+      }
+      await pool.query(
+        `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+         SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
+         FROM po_new WHERE po_id = ?`, [po.po_id]);
+      await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+      await pool.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
+      await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
+      await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+        [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
+    }
+
+    // Remove rejected from queue
+    for (const r of rejected) {
+      await pool.query('DELETE FROM po_new WHERE po_id = ?', [r.po_id]);
+      await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+        [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
+    }
+
+    // Send external POs to CB
+    let cbResult = null;
+    if (external.length > 0) {
+      try {
+        cbResult = await cb.sendPoToCb(external);
+      } catch (e) {
+        return fail(res, 5002, `CB niet bereikbaar: ${e.message}`, 502);
+      }
+      for (const po of external) {
+        const ts = now();
+        await pool.query(
+          `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
+           SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ?, ?, bb_id, ba_id
+           FROM po_new WHERE po_id = ?`, [2000, ts, po.po_id]);
+        await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+        await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          [ts, 'po_out', 'PO verstuurd naar CB', po.po_id]);
+      }
+    }
+
+    return ok(res, {
+      internal: internal.length,
+      external: external.length,
+      rejected: rejected.length,
+      rejected_details: rejected,
+      cb_response: cbResult,
+    }, `Verwerkt: ${internal.length} intern, ${external.length} extern, ${rejected.length} geweigerd`);
+  } catch (err) {
+    return fail(res, 'SERVER_ERROR', err.message, 500);
+  }
+});
+
+// ─── GET /api/cb/poll_po ──────────────────────────────────────────────────────
+router.get('/cb/poll_po', async (_req, res) => {
+  try {
+    const data = await cb.fetchPoFromCb();
+    const pos  = data.data || [];
+    const acks = [];
+
+    for (const po of pos) {
+      const ts = now();
       const [account] = await pool.query('SELECT * FROM accounts WHERE id = ?', [po.ba_id]);
       const isvalid = account.length > 0 && po.po_amount > 0 ? 1 : 0;
       const bb_code = isvalid ? 2000 : 4004;
-      const bb_datetime = now();
 
       await pool.query(
-        `INSERT IGNORE INTO po_in (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
+        `INSERT IGNORE INTO po_in
+           (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime,
+            cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [po.po_id, po.po_amount, po.po_message, po.po_datetime, po.ob_id, po.oa_id, po.ob_code||null, po.ob_datetime||null, po.cb_code||null, po.cb_datetime||null, po.bb_id, po.ba_id, bb_code, bb_datetime]
-      );
+        [po.po_id, po.po_amount, po.po_message, po.po_datetime,
+         po.ob_id, po.oa_id, po.ob_code||null, po.ob_datetime||null,
+         po.cb_code||null, po.cb_datetime||null,
+         po.bb_id, po.ba_id, bb_code, ts]);
 
       if (isvalid) {
         await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
         await pool.query(
           `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
            VALUES (?, ?, ?, ?, ?, 1, 1)`,
-          [`TXN_${po.po_id}`, po.po_amount, now(), po.po_id, po.ba_id]
-        );
+          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
       }
 
+      const ack = {
+        po_id: po.po_id, po_amount: po.po_amount, po_message: po.po_message, po_datetime: po.po_datetime,
+        ob_id: po.ob_id, oa_id: po.oa_id, ob_code: po.ob_code||null, ob_datetime: po.ob_datetime||null,
+        cb_code: po.cb_code||null, cb_datetime: po.cb_datetime||null,
+        bb_id: BIC(), ba_id: po.ba_id, bb_code, bb_datetime: ts,
+      };
+
       await pool.query(
-        `INSERT IGNORE INTO ack_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
+        `INSERT IGNORE INTO ack_out
+           (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime,
+            cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [po.po_id, po.po_amount, po.po_message, po.po_datetime, po.ob_id, po.oa_id, po.ob_code||null, po.ob_datetime||null, po.cb_code||null, po.cb_datetime||null, po.bb_id, po.ba_id, bb_code, bb_datetime]
-      );
+        [ack.po_id, ack.po_amount, ack.po_message, ack.po_datetime,
+         ack.ob_id, ack.oa_id, ack.ob_code, ack.ob_datetime,
+         ack.cb_code, ack.cb_datetime,
+         ack.bb_id, ack.ba_id, ack.bb_code, ack.bb_datetime]);
 
-      await pool.query(
-        `INSERT INTO log (datetime, message, type, po_id, po_amount, bb_id, ba_id) VALUES (?, ?, 'PO_IN', ?, ?, ?, ?)`,
-        [now(), isvalid ? 'Inkomende PO verwerkt' : 'Inkomende PO geweigerd', po.po_id, po.po_amount, po.bb_id, po.ba_id]
-      );
+      await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
+        [ts, isvalid ? 'Inkomende PO verwerkt' : 'Inkomende PO geweigerd', 'PO_IN', po.po_id]);
+
+      acks.push(ack);
     }
 
-    if (pos.length > 0) {
-      const [acks] = await pool.query(`SELECT * FROM ack_out WHERE po_id IN (?)`, [pos.map(p => p.po_id)]);
-      await cb.sendAckIn(acks);
-    }
+    if (acks.length > 0) await cb.sendAckIn(acks);
 
-    return ok(res, pos, `${pos.length} inkomende PO(s) verwerkt`);
+    return ok(res, acks, `${pos.length} inkomende PO('s) verwerkt`);
   } catch (err) {
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
 
-// GET /api/po/ack — fetch ACKs from CB for sent POs
-router.get('/ack', async (req, res) => {
+// ─── GET /api/cb/poll_ack ─────────────────────────────────────────────────────
+router.get('/cb/poll_ack', async (_req, res) => {
   try {
     const data = await cb.fetchAckOut();
     const acks = data.data || [];
     for (const ack of acks) {
       await pool.query(
-        `INSERT IGNORE INTO ack_in (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
+        `INSERT IGNORE INTO ack_in
+           (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime,
+            cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [ack.po_id, ack.po_amount, ack.po_message, ack.po_datetime, ack.ob_id, ack.oa_id, ack.ob_code||null, ack.ob_datetime||null, ack.cb_code||null, ack.cb_datetime||null, ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]
-      );
-      await pool.query(
-        `INSERT INTO log (datetime, message, type, po_id) VALUES (?, 'ACK ontvangen van CB', 'ACK_IN', ?)`,
-        [now(), ack.po_id]
-      );
+        [ack.po_id, ack.po_amount, ack.po_message, ack.po_datetime,
+         ack.ob_id, ack.oa_id, ack.ob_code||null, ack.ob_datetime||null,
+         ack.cb_code||null, ack.cb_datetime||null,
+         ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]);
+      await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
+        [now(), 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
     }
-    return ok(res, acks, `${acks.length} ACK(s) ontvangen`);
+    return ok(res, acks, `${acks.length} ACK('s) ontvangen`);
   } catch (err) {
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
