@@ -9,7 +9,7 @@ async function getCBToken() {
   const res = await fetch(`${process.env.CB_URL}/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bic: process.env.BIC, secret: process.env.CB_SECRET })
+    body: JSON.stringify({ bic: process.env.BIC, secret_key: process.env.CB_SECRET })
   });
 
   const data = await res.json();
