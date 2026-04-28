@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check index.js)",
+      "Bash(grep -E \"^\\(express|mysql2|dotenv\\)$\")",
+      "WebFetch(domain:stevenop.be)",
+      "Bash(node --check app.js)",
+      "Bash(node --check services/cbToken.js)",
+      "Bash(node --check routes/po.js)",
+      "Bash(node --check routes/cb_poll.js)",
+      "Bash(node --check routes/public.js)",
+      "Bash(node --check routes/po_in.js)"
+    ]
+  }
+}
