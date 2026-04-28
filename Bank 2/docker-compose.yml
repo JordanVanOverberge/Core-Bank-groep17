@@ -1,37 +1,55 @@
-services:
-  app:
-    build: .
-    ports:
-      - "3001:3001"
-    env_file:
-      - .env
-    environment:
-      DB_HOST: db
-    volumes:
-      - .:/app
-      - /app/node_modules
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
+version: '3.8'
 
-  db:
+services:
+  # MySQL Database Service
+  mysql:
     image: mysql:8.0
+    container_name: pingfin_gkcc_db
     environment:
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: pingfin_gkcc
-      MYSQL_USER: bankuser
-      MYSQL_PASSWORD: bankpassword
-      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - pingfin_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+
+  # Node.js Bank API Service
+  bank-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pingfin_gkcc_api
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: pingfin_gkcc
+      PORT: 3001
+      BIC: GKCCBEBB
+      BANK_NAME: PingFin Centrale (GKCCBEBB)
+      CB_SECRET: 23f67d88559ecdba
+      CB_URL: https://stevenop.be/pingfin/api/v2
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - pingfin_network
+    command: npm start
 
 volumes:
-  db_data:
+  mysql_data:
+    driver: local
+
+networks:
+  pingfin_network:
+    driver: bridge

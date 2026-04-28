@@ -10,6 +10,25 @@ const fail = (res, msg, status = 500, code = null) =>
 
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+const MAX_AMOUNT = 500;
+
+const CB_CODES = {
+  4002: 'Bedrag is te hoog (max 500 euro)',
+  4003: 'Bedrag is negatief of nul',
+  4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
+  4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
+  4006: 'PO_ID ongeldig (moet beginnen met GKCCBEBB_)'
+};
+
+function validatePo(po) {
+  if (po.po_amount <= 0)              return 4003;
+  if (po.po_amount > MAX_AMOUNT)      return 4002;
+  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004;
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005;
+  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006;
+  return null;
+}
+
 // POST /api/po_in  –  CB stuurt ons POs toe (van andere banken)
 router.post('/po_in', auth, async (req, res) => {
   const pos = req.body?.data;
@@ -20,6 +39,17 @@ router.post('/po_in', auth, async (req, res) => {
     const acks = [];
 
     for (const po of pos) {
+      const validationError = validatePo(po);
+      if (validationError) {
+        // Weiger ongeldige PO
+        const ts = now();
+        await pool.query(
+          'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          [ts, 'po_rejected', `PO geweigerd: ${CB_CODES[validationError]} (code ${validationError})`, po.po_id]
+        );
+        continue; // Sla over
+      }
+
       const ts = now();
 
       // Sla PO op in po_in
