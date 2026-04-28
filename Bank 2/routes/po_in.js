@@ -61,11 +61,17 @@ router.post('/po_in', auth, async (req, res) => {
          po.ob_id, po.oa_id, po.bb_id, po.ba_id]
       );
 
-      // Crediteer de ontvangende rekening
+      // Crediteer de ontvangende rekening en registreer transactie
       try {
         await pool.query(
           'UPDATE accounts SET balance = balance + ? WHERE id = ?',
           [po.po_amount, po.ba_id]
+        );
+        await pool.query(
+          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
         );
       } catch (_) {}
 
