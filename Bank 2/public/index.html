@@ -53,6 +53,18 @@
 
 <main>
 
+  <!-- DOCUMENTATIE -->
+  <div class="section">
+    <div class="section-title">Documentatie</div>
+    <div class="grid">
+      <button class="btn" onclick="loadHelp()">
+        <div class="btn-method get">GET</div>
+        <div class="btn-name">API Help</div>
+        <div class="btn-endpoint">/api/help</div>
+      </button>
+    </div>
+  </div>
+
   <!-- ACCOUNTS -->
   <div class="section">
     <div class="section-title">Accounts</div>
@@ -243,6 +255,30 @@
     const min   = document.getElementById('gen_min').value;
     const max   = document.getElementById('gen_max').value;
     await api('GET', `/api/po_new_generate?count=${count}&min=${min}&max=${max}`, 'POs genereren');
+  }
+
+  async function loadHelp() {
+    showResponse('API Help', '...', 'Bezig...');
+    try {
+      const res  = await fetch('/api/help');
+      const json = await res.json();
+      const rows = json.data.map(e => `
+        <tr>
+          <td style="color:${e.method==='GET'?'#48bb78':'#f6ad55'};font-weight:bold;font-size:10px;letter-spacing:.08em">${e.method}</td>
+          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${e.path}</td>
+          <td style="font-size:11px;color:#a0aec0">${e.desc}</td>
+          <td style="font-size:10px;color:${e.auth?'#fc8181':'#68d391'};text-align:center">${e.auth?'Ja':'Nee'}</td>
+        </tr>`).join('');
+      const html = `
+        <div style="margin-bottom:10px;font-size:11px;color:#718096">${json.message}</div>
+        <table class="accounts-table">
+          <thead><tr><th>Methode</th><th>Endpoint</th><th>Beschrijving</th><th style="text-align:center">Auth</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      showResponse('API Help', res.status, null, html);
+    } catch(e) {
+      showResponse('API Help', 'ERROR', e.message);
+    }
   }
 
   async function addPo() {
