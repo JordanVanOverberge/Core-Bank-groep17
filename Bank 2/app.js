@@ -13,7 +13,15 @@ app.use('/api', require('./routes/po_in'));
 app.use('/api', require('./routes/cb_poll'));
 app.use('/api', require('./routes/data'));
 
-app.get('/', (req, res) => res.redirect('/api/help'));
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === 'admin' && password === 'Pingfin2026!') {
+    return res.json({ ok: true, data: { token: 'gkccbebb_token_2026' } });
+  }
+  return res.status(401).json({ ok: false, status: 401 });
+});
+
+app.get('/', (req, res) => res.redirect('/index.html'));
 
 const PORT = process.env.PORT || 3001;
 pool.initDb().then(() => {

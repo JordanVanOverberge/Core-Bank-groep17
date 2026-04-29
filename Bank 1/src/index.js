@@ -16,7 +16,13 @@ const fail = (res, code, msg, status = 500) =>
 
 app.use('/api', poRoutes);
 
-app.get('/', (req, res) => res.redirect('/api/help'));
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === 'admin' && password === 'corebank123') {
+    return res.json({ ok: true, data: { token: 'bank1_token_2026' } });
+  }
+  return res.status(401).json({ ok: false, status: 401, message: 'Ongeldige gebruikersnaam of wachtwoord' });
+});
 
 app.get('/api/help', (req, res) =>
   ok(res, [

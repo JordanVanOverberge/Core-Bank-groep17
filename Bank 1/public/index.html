@@ -494,6 +494,19 @@
   <div class="topbar-right">
     <div class="status-pill"><div class="status-dot"></div>ONLINE</div>
     <span class="server-tag" id="serverUrl"></span>
+    <button onclick="doLogout()" style="
+      display:flex;align-items:center;gap:6px;
+      background:none;border:1px solid var(--border);border-radius:6px;
+      padding:5px 12px;font-size:12px;font-weight:500;color:var(--text2);
+      cursor:pointer;font-family:var(--sans);transition:all 0.15s;
+    " onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+       onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+      </svg>
+      Uitloggen
+    </button>
   </div>
 </header>
 
@@ -835,6 +848,13 @@
 </div>
 
 <script>
+  if (!localStorage.getItem('token')) window.location.href = '/login.html';
+
+  function doLogout() {
+    localStorage.removeItem('token');
+    window.location.href = '/login.html';
+  }
+
   document.getElementById('serverUrl').textContent = window.location.host;
   fetch('/api/info').then(r => r.json()).then(j => {
     if (j.data) {

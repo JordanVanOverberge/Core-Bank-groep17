@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(Get-Process -Id 26536 -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Id 26536 -Force)"
+      "PowerShell(Stop-Process -Id 26536 -Force)",
+      "Bash(docker compose *)"
     ]
   }
 }

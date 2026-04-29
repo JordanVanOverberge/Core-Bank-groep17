@@ -55,6 +55,15 @@ const generateRandomPO = () => {
     };
 };
 
+// POST /api/login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === 'admin' && password === 'corebank123') {
+    return res.json({ ok: true, data: { token: 'bank1_token_2026' } });
+  }
+  return res.status(401).json({ ok: false, status: 401 });
+});
+
 // GET / → served by express.static (public/index.html)
 
 // ─────────────────────────────────────────────

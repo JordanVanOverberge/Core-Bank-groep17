@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PingFin — Inloggen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F0F4F8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: #2563EB;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.05em;
+      flex-shrink: 0;
+    }
+
+    .logo-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E293B;
+      letter-spacing: 0.08em;
+    }
+
+    .subtitle {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: #64748B;
+      letter-spacing: 0.05em;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #1E293B;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: #1E293B;
+      background: #F8FAFC;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2563EB;
+      background: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .btn {
+      width: 100%;
+      background: #2563EB;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, box-shadow 0.15s;
+      margin-top: 8px;
+    }
+
+    .btn:hover {
+      background: #1D4ED8;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .error {
+      display: none;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #DC2626;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 14px;
+    }
+
+    .error.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-mark">PF</div>
+      <span class="logo-name">PINGFIN</span>
+    </div>
+    <div class="subtitle">GKCCBEBB &middot; Internationale Week 2026</div>
+
+    <form onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label for="username">Gebruikersnaam</label>
+        <input id="username" type="text" autocomplete="username" placeholder="admin" />
+      </div>
+      <div class="form-group">
+        <label for="password">Wachtwoord</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn">Inloggen</button>
+      <div class="error" id="errorMsg">Ongeldige gebruikersnaam of wachtwoord.</div>
+    </form>
+  </div>
+
+  <script>
+    if (localStorage.getItem('token')) {
+      window.location.href = '/';
+    }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const err = document.getElementById('errorMsg');
+      err.classList.remove('visible');
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const json = await res.json();
+        if (json.ok && json.data && json.data.token) {
+          localStorage.setItem('token', json.data.token);
+          window.location.href = '/';
+        } else {
+          err.classList.add('visible');
+        }
+      } catch (ex) {
+        err.textContent = 'Verbindingsfout: ' + ex.message;
+        err.classList.add('visible');
+      }
+    }
+  </script>
+</body>
+</html>

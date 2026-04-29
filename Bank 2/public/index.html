@@ -3,324 +3,1255 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PingFin — Admin Panel</title>
+  <title>PingFin — API Docs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
+    :root {
+      --bg:           #F5F7FB;
+      --surface:      #FFFFFF;
+      --surface2:     #F8FAFC;
+      --border:       #E2E8F0;
+      --border2:      #CBD5E1;
+      --accent:       #7C3AED;
+      --accent-light: #EDE9FE;
+      --accent-dark:  #6D28D9;
+      --green:        #059669;
+      --green-light:  #D1FAE5;
+      --blue:         #2563EB;
+      --blue-light:   #DBEAFE;
+      --orange:       #D97706;
+      --orange-light: #FEF3C7;
+      --red:          #DC2626;
+      --red-light:    #FEE2E2;
+      --text:         #0F172A;
+      --text2:        #475569;
+      --text3:        #94A3B8;
+      --code-bg:      #0F172A;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
-    header { border-bottom: 1px solid #2d3748; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 14px; letter-spacing: 0.15em; color: #f7c948; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; display: inline-block; margin-right: 6px; }
-    .server-url { font-size: 12px; color: #718096; }
-    main { padding: 2rem; max-width: 960px; margin: 0 auto; }
-    .section { margin-bottom: 2rem; }
-    .section-title { font-size: 10px; letter-spacing: 0.15em; color: #718096; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #2d3748; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-    .btn { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; color: inherit; width: 100%; }
-    .btn:hover { background: #2d3748; border-color: #4a5568; }
-    .btn:active { transform: scale(0.98); }
-    .btn-method { font-size: 10px; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 5px; }
-    .btn-name { font-size: 13px; color: #e2e8f0; margin-bottom: 3px; }
-    .btn-endpoint { font-size: 11px; color: #718096; }
-    .get { color: #48bb78; }
-    .post { color: #f6ad55; }
-    .form-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .field label { display: block; font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-    .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 4px; padding: 7px 10px; font-size: 12px; font-family: 'Courier New', monospace; color: #e2e8f0; }
-    .field input:focus { outline: none; border-color: #f7c948; }
-    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; }
-    .submit-btn:hover { background: #ecc333; }
-    .response-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-top: 1.5rem; display: none; }
-    .response-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2d3748; }
-    .response-title { font-size: 11px; color: #718096; letter-spacing: 0.1em; text-transform: uppercase; }
-    .status-ok  { font-size: 11px; color: #48bb78; }
-    .status-err { font-size: 11px; color: #fc8181; }
-    .response-body { padding: 14px; font-size: 12px; color: #a0aec0; white-space: pre-wrap; max-height: 320px; overflow-y: auto; line-height: 1.7; }
-    .accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-    .accounts-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #718096; border-bottom: 1px solid #2d3748; }
-    .accounts-table td { padding: 8px 12px; border-bottom: 1px solid #1a202c; color: #e2e8f0; }
-    .accounts-table tr:hover td { background: #2d3748; }
+    html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); overflow: hidden; }
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ─── TOPBAR ─── */
+    .topbar {
+      height: 56px; background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; gap: 12px; flex-shrink: 0; z-index: 100;
+    }
+    .logo-mark {
+      width: 32px; height: 32px; background: var(--accent); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 11px; font-weight: 700; color: #fff; letter-spacing: -0.05em; flex-shrink: 0;
+    }
+    .logo-name { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0.06em; }
+    .topbar-div { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .topbar-sub { font-size: 12px; color: var(--text3); font-weight: 500; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 20px;
+      padding: 4px 12px; font-size: 11px; color: var(--green); font-family: var(--mono); font-weight: 700;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(5,150,105,.4); }
+      50%      { opacity:.7; box-shadow: 0 0 0 4px rgba(5,150,105,0); }
+    }
+    .server-tag { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+    .btn-ghost {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--text2);
+      cursor: pointer; font-family: var(--sans); transition: all 0.15s;
+    }
+    .btn-ghost:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+    .btn-ghost svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ─── BODY ─── */
+    .body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+      padding: 16px 0; overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .sb-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: var(--text3);
+      text-transform: uppercase; padding: 8px 16px 4px;
+    }
+    .sb-item {
+      display: flex; align-items: center; gap: 9px; padding: 7px 16px;
+      cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text2);
+      transition: all 0.15s; border-left: 3px solid transparent; user-select: none;
+    }
+    .sb-item:hover { color: var(--text); background: var(--surface2); }
+    .sb-item.active { color: var(--accent); background: var(--accent-light); border-left-color: var(--accent); }
+    .sb-icon { width: 16px; height: 16px; opacity: 0.5; flex-shrink: 0; }
+    .sb-item.active .sb-icon { opacity: 1; }
+    .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+    /* ─── MAIN ─── */
+    .main { flex: 1; display: flex; overflow: hidden; }
+
+    /* ─── SECTIONS ─── */
+    .section { display: none; flex: 1; overflow: hidden; }
+    .section.active { display: flex; }
+
+    /* ─── API DOCS — TWO COLUMN ─── */
+    .api-container { display: flex; flex: 1; overflow: hidden; }
+    .api-left {
+      flex: 0 0 58%; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .api-left-scroll { flex: 1; overflow-y: auto; padding: 28px 28px 20px; }
+    .api-left-scroll::-webkit-scrollbar { width: 4px; }
+    .api-left-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .api-right {
+      flex: 1; background: var(--surface); padding: 28px 24px;
+      overflow-y: auto;
+    }
+    .api-right::-webkit-scrollbar { width: 4px; }
+    .api-right::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ─── PAGE HEADER ─── */
+    .api-title { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .api-subtitle { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+
+    /* ─── STATS GRID ─── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 14px; display: flex; align-items: center; gap: 12px;
+    }
+    .stat-icon {
+      width: 38px; height: 38px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-icon.purple { background: var(--accent-light); color: var(--accent); }
+    .stat-icon.green  { background: var(--green-light); color: var(--green); }
+    .stat-icon.blue   { background: var(--blue-light); color: var(--blue); }
+    .stat-icon.orange { background: var(--orange-light); color: var(--orange); }
+    .stat-number { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 2px; }
+    .stat-label { font-size: 11px; color: var(--text3); }
+
+    /* ─── SEARCH / FILTER ─── */
+    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+      padding: 9px 12px 9px 36px; font-size: 13px; color: var(--text); font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .search-wrap input:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text3); pointer-events: none;
+    }
+    .filter-select {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+      padding: 8px 12px; font-size: 13px; color: var(--text2); font-family: inherit;
+      cursor: pointer; appearance: none; padding-right: 28px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    .filter-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ─── ENDPOINT GROUPS ─── */
+    .ep-group { margin-bottom: 20px; }
+    .ep-group-header {
+      display: flex; align-items: center; gap: 8px; padding: 10px 0 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--text2); text-transform: uppercase;
+    }
+    .ep-group-header svg { width: 16px; height: 16px; color: var(--text3); flex-shrink: 0; }
+    .ep-group-count {
+      margin-left: auto; font-size: 10px; background: var(--accent-light);
+      color: var(--accent); padding: 2px 8px; border-radius: 20px; font-weight: 600;
+    }
+
+    /* ─── ENDPOINT ITEMS ─── */
+    .ep-item {
+      display: flex; align-items: center; gap: 0; padding: 12px 14px;
+      margin-bottom: 6px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; transition: all 0.15s; position: relative;
+    }
+    .ep-item:hover { border-color: var(--border2); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .ep-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: #FDFCFF; }
+
+    .ep-badge {
+      font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px; flex-shrink: 0; width: 42px; text-align: center;
+      margin-right: 14px;
+    }
+    .ep-badge.get  { background: var(--green-light); color: var(--green); }
+    .ep-badge.post { background: var(--blue-light); color: var(--blue); }
+
+    .ep-path {
+      font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text);
+      flex-shrink: 0; margin-right: 16px; min-width: 160px;
+    }
+    .ep-desc { font-size: 12px; color: var(--text3); flex: 1; }
+
+    .ep-auth {
+      font-size: 11px; font-weight: 500; margin-left: 12px; flex-shrink: 0; white-space: nowrap;
+    }
+    .ep-auth.no  { color: var(--text3); }
+    .ep-auth.yes { color: var(--orange); }
+
+    .ep-chevron { width: 14px; height: 14px; color: var(--text3); margin-left: 10px; flex-shrink: 0; transition: transform 0.15s; }
+    .ep-item.active .ep-chevron { transform: rotate(180deg); color: var(--accent); }
+
+    /* ─── ENDPOINT LIST FOOTER NOTE ─── */
+    .ep-note {
+      display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px;
+      background: var(--blue-light); border-radius: 8px; margin-top: 8px;
+      font-size: 12px; color: #1E40AF; line-height: 1.5;
+    }
+    .ep-note svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+    .ep-note kbd {
+      background: rgba(37,99,235,0.15); border-radius: 3px;
+      padding: 0 5px; font-family: var(--mono); font-size: 11px; font-weight: 600;
+    }
+
+    /* ─── RIGHT PANEL ─── */
+    .rp-placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--text3); text-align: center; gap: 12px;
+    }
+    .rp-placeholder svg { width: 40px; height: 40px; opacity: 0.3; }
+    .rp-placeholder p { font-size: 13px; }
+
+    .rp-detail { display: none; }
+    .rp-detail.visible { display: block; }
+
+    .rp-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+      padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .rp-header-icon {
+      width: 32px; height: 32px; background: var(--accent-light); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .rp-header-icon svg { width: 16px; height: 16px; color: var(--accent); }
+    .rp-header-title { font-size: 14px; font-weight: 600; color: var(--text); }
+
+    .rp-method-path { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .rp-badge {
+      font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      padding: 4px 10px; border-radius: 4px; flex-shrink: 0;
+    }
+    .rp-badge.get  { background: var(--green-light); color: var(--green); }
+    .rp-badge.post { background: var(--blue-light); color: var(--blue); }
+    .rp-path { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+    .rp-desc { font-size: 13px; color: var(--text3); margin-bottom: 20px; line-height: 1.5; }
+
+    .rp-row { margin-bottom: 16px; }
+    .rp-row-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 6px;
+    }
+    .rp-auth-badge {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .rp-auth-badge.no  { background: var(--green-light); color: var(--green); }
+    .rp-auth-badge.yes { background: var(--red-light); color: var(--red); }
+    .rp-value {
+      font-family: var(--mono); font-size: 12px; color: var(--text2);
+    }
+    .rp-resp-badge {
+      display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px; background: var(--green-light); color: var(--green);
+    }
+
+    .rp-code-section { margin-top: 20px; }
+    .rp-code-label {
+      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px;
+    }
+    .rp-code-block {
+      background: var(--code-bg); border-radius: 8px; padding: 16px;
+      position: relative; overflow: hidden;
+    }
+    .rp-code-copy {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(255,255,255,0.1); border: none; border-radius: 5px;
+      padding: 5px 7px; cursor: pointer; transition: background 0.15s;
+    }
+    .rp-code-copy:hover { background: rgba(255,255,255,0.2); }
+    .rp-code-copy svg { width: 14px; height: 14px; color: #94A3B8; display: block; }
+    .rp-code-pre {
+      font-family: var(--mono); font-size: 12px; color: #94A3B8;
+      white-space: pre; overflow-x: auto; line-height: 1.8; max-height: 280px; overflow-y: auto;
+    }
+    .rp-code-pre::-webkit-scrollbar { width: 3px; height: 3px; }
+    .rp-code-pre::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    /* JSON syntax highlight colors */
+    .j-key   { color: #7DD3FC; }
+    .j-str   { color: #86EFAC; }
+    .j-num   { color: #FCA5A5; }
+    .j-bool  { color: #C4B5FD; }
+    .j-null  { color: #FCD34D; }
+
+    /* ─── OTHER SECTIONS (non-docs) ─── */
+    .page-wrap { flex: 1; padding: 32px 40px; overflow-y: auto; display: flex; flex-direction: column; }
+    .page-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .page-sub { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    .form-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .field input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+      padding: 9px 12px; font-size: 13px; font-family: inherit; color: var(--text);
+    }
+    .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none; border-radius: 7px;
+      padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: var(--sans); transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--accent-dark); }
+
+    .resp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 16px; }
+    .resp-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface2);
+    }
+    .resp-card-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .resp-status { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .resp-status.ok  { background: var(--green-light); color: var(--green); }
+    .resp-status.err { background: var(--red-light); color: var(--red); }
+    .resp-body {
+      padding: 16px; font-size: 12px; font-family: var(--mono); color: #334155;
+      white-space: pre-wrap; max-height: 320px; overflow-y: auto;
+      background: #F8FAFC; line-height: 1.8;
+    }
+    .resp-body::-webkit-scrollbar { width: 4px; }
+    .resp-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .resp-hidden { display: none; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-table th {
+      text-align: left; padding: 9px 14px; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .data-table tr:hover td { background: var(--surface2); }
+    .balance { color: var(--green); font-family: var(--mono); font-weight: 700; }
   </style>
 </head>
 <body>
+<div class="app">
 
-<header>
-  <h1 id="headerTitle">PINGFIN — ADMIN PANEL</h1>
-  <span class="server-url"><span class="dot"></span><span id="serverUrl"></span></span>
-</header>
-
-<main>
-
-  <!-- DOCUMENTATIE -->
-  <div class="section">
-    <div class="section-title">Documentatie</div>
-    <div class="grid">
-      <button class="btn" onclick="loadHelp()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">API Help</div>
-        <div class="btn-endpoint">/api/help</div>
+  <!-- ═══ TOPBAR ═══ -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="logo-mark">PF</div>
+      <span class="logo-name">PINGFIN</span>
+      <div class="topbar-div"></div>
+      <span class="topbar-sub">API Docs</span>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div>ONLINE</div>
+      <span class="server-tag" id="serverUrl">localhost:3001</span>
+      <button class="btn-ghost" onclick="doLogout()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        Uitloggen
       </button>
     </div>
-  </div>
+  </header>
 
-  <!-- ACCOUNTS -->
-  <div class="section">
-    <div class="section-title">Accounts</div>
-    <div class="grid">
-      <button class="btn" onclick="loadAccounts()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Alle rekeningen</div>
-        <div class="btn-endpoint">/api/accounts</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- AUTHENTICATIE -->
-  <div class="section">
-    <div class="section-title">Authenticatie</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/token','Token ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer CB token</div>
-        <div class="btn-endpoint">/api/token</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- OB FLOW -->
-  <div class="section">
-    <div class="section-title">Payment Orders — OB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="toggleForm('generateForm')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer POs</div>
-        <div class="btn-endpoint">/api/po_new_generate</div>
-      </button>
-      <button class="btn" onclick="toggleForm('poAddForm')">
-        <div class="btn-method post">POST</div>
-        <div class="btn-name">Voeg PO toe</div>
-        <div class="btn-endpoint">/api/po_new_add</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_new_process','POs verwerken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Verwerk POs naar CB</div>
-        <div class="btn-endpoint">/api/po_new_process</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_out','PO-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk PO-out</div>
-        <div class="btn-endpoint">/api/po_out</div>
-      </button>
-    </div>
-
-    <div class="form-panel" id="generateForm">
-      <div class="form-grid-3">
-        <div class="field"><label>Aantal</label><input id="gen_count" value="3" /></div>
-        <div class="field"><label>Min (€)</label><input id="gen_min" value="1" /></div>
-        <div class="field"><label>Max (€)</label><input id="gen_max" value="500" /></div>
+  <div class="body">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar">
+      <!-- SYSTEEM -->
+      <div class="sb-label">Systeem</div>
+      <div class="sb-item active" onclick="nav('docs',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        API Help
       </div>
-      <button class="submit-btn" onclick="generatePos()">Genereer</button>
-    </div>
-
-    <div class="form-panel" id="poAddForm">
-      <div class="form-grid">
-        <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
-        <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
-        <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
-        <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
-        <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
+      <div class="sb-item" onclick="nav('info',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Bank info
       </div>
-      <button class="submit-btn" onclick="addPo()">Toevoegen</button>
-    </div>
-  </div>
+      <div class="sb-item" onclick="nav('auth',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+        Authenticatie
+      </div>
 
-  <!-- CB POLLING / BB FLOW -->
-  <div class="section">
-    <div class="section-title">CB Polling — BB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/cb/poll_po','Inkomende POs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen inkomende POs</div>
-        <div class="btn-endpoint">/api/cb/poll_po</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/cb/poll_ack','ACKs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen ACKs</div>
-        <div class="btn-endpoint">/api/cb/poll_ack</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_in','ACK-in bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-in</div>
-        <div class="btn-endpoint">/api/ack_in</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_out','ACK-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-out</div>
-        <div class="btn-endpoint">/api/ack_out</div>
-      </button>
-    </div>
-  </div>
+      <div class="sb-divider"></div>
 
-  <!-- DATA & LOGS -->
-  <div class="section">
-    <div class="section-title">Data & logs</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/transactions','Transacties bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Transacties</div>
-        <div class="btn-endpoint">/api/transactions</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/logs','Logs bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Logs</div>
-        <div class="btn-endpoint">/api/logs</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/info','Bank info')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bank info</div>
-        <div class="btn-endpoint">/api/info</div>
-      </button>
-    </div>
-  </div>
+      <!-- REKENINGEN -->
+      <div class="sb-label">Rekeningen</div>
+      <div class="sb-item" onclick="nav('accounts',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+        </svg>
+        Alle rekeningen
+      </div>
 
-  <!-- RESPONSE -->
-  <div class="response-panel" id="responsePanel">
-    <div class="response-header">
-      <span class="response-title" id="responseTitle">Response</span>
-      <span id="responseStatus"></span>
-    </div>
-    <div class="response-body" id="responseBody">Laden...</div>
-  </div>
+      <div class="sb-divider"></div>
 
-</main>
+      <!-- OB FLOW -->
+      <div class="sb-label">OB Flow</div>
+      <div class="sb-item" onclick="nav('po-gen',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Genereer POs
+      </div>
+      <div class="sb-item" onclick="nav('po-add',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Voeg PO toe
+      </div>
+      <div class="sb-item" onclick="nav('po-process',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+        </svg>
+        Verwerk naar CB
+      </div>
+      <div class="sb-item" onclick="nav('po-out',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        PO-out
+      </div>
+
+      <div class="sb-divider"></div>
+
+      <!-- BB FLOW -->
+      <div class="sb-label">BB Flow</div>
+      <div class="sb-item" onclick="nav('po-in',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 19l9-7 9 7M3 5l9 7 9-7"/>
+        </svg>
+        Inkomende POs
+      </div>
+      <div class="sb-item" onclick="nav('ack-fetch',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        ACKs ophalen
+      </div>
+      <div class="sb-item" onclick="nav('ack-in',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        ACK-in
+      </div>
+      <div class="sb-item" onclick="nav('ack-out',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7"/>
+        </svg>
+        ACK-out
+      </div>
+
+      <div class="sb-divider"></div>
+
+      <!-- MONITORING -->
+      <div class="sb-label">Monitoring</div>
+      <div class="sb-item" onclick="nav('transactions',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Transacties
+      </div>
+      <div class="sb-item" onclick="nav('logs',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        Logs
+      </div>
+    </nav>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="main">
+
+      <!-- ─── API HELP (DOCS) ─── -->
+      <div class="section active" id="s-docs">
+        <div class="api-container">
+
+          <!-- LEFT: endpoint list -->
+          <div class="api-left">
+            <div class="api-left-scroll">
+              <div class="api-title">API Documentatie</div>
+              <div class="api-subtitle">Overzicht van alle beschikbare endpoints in het PingFin systeem.</div>
+
+              <!-- Stats -->
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-icon purple">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-number" id="st-total">12</div>
+                    <div class="stat-label">Endpoints</div>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon green">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h7"/>
+                    </svg>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-number" id="st-get">9</div>
+                    <div class="stat-label">GET requests</div>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon blue">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+                    </svg>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-number" id="st-post">3</div>
+                    <div class="stat-label">POST requests</div>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon orange">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-number" id="st-auth">2</div>
+                    <div class="stat-label">Beveiligde endpoints</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search & Filter -->
+              <div class="search-row">
+                <div class="search-wrap">
+                  <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                  <input type="text" id="epSearch" placeholder="Zoek endpoint..." oninput="filterEp()">
+                </div>
+                <select class="filter-select" id="epMethod" onchange="filterEp()">
+                  <option value="">Methode: Alle</option>
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                </select>
+                <select class="filter-select" id="epAuth" onchange="filterEp()">
+                  <option value="">Auth: Alle</option>
+                  <option value="ja">Auth: JA</option>
+                  <option value="nee">Auth: NEE</option>
+                </select>
+              </div>
+
+              <!-- Endpoint groups -->
+              <div id="epContainer"></div>
+
+              <!-- Footer note -->
+              <div class="ep-note">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>
+                  Alle requests en responses zijn in JSON formaat.
+                  Gebruik een <kbd>Authorization</kbd> header indien Auth vereist is.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: detail panel -->
+          <div class="api-right">
+            <!-- Placeholder -->
+            <div class="rp-placeholder" id="rpPlaceholder">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              </svg>
+              <p>Selecteer een endpoint<br>om de details te bekijken</p>
+            </div>
+
+            <!-- Detail content -->
+            <div class="rp-detail" id="rpDetail">
+              <!-- Header -->
+              <div class="rp-header">
+                <div class="rp-header-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                  </svg>
+                </div>
+                <span class="rp-header-title">Endpoint details</span>
+              </div>
+
+              <!-- Method + Path -->
+              <div class="rp-method-path">
+                <span class="rp-badge" id="rpBadge">GET</span>
+                <span class="rp-path" id="rpPath">/api/help</span>
+              </div>
+              <p class="rp-desc" id="rpDesc"></p>
+
+              <!-- Auth -->
+              <div class="rp-row">
+                <div class="rp-row-label">Auth</div>
+                <span class="rp-auth-badge" id="rpAuth">Niet vereist</span>
+              </div>
+
+              <!-- Content-Type -->
+              <div class="rp-row">
+                <div class="rp-row-label">Content-Type</div>
+                <span class="rp-value">application/json</span>
+              </div>
+
+              <!-- Response -->
+              <div class="rp-row">
+                <div class="rp-row-label">Response</div>
+                <span class="rp-resp-badge">200 OK</span>
+              </div>
+
+              <!-- Code block -->
+              <div class="rp-code-section">
+                <div class="rp-code-label">Voorbeeld response</div>
+                <div class="rp-code-block">
+                  <button class="rp-code-copy" onclick="copyCode()" title="Kopieer">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                  <pre class="rp-code-pre" id="rpCode"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- end docs section -->
+
+      <!-- ─── BANK INFO ─── -->
+      <div class="section" id="s-info" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Bank Informatie</div>
+          <div class="page-sub">Details over PingFin en het team</div>
+          <button class="btn-primary" onclick="loadInfo()">Laad Info</button>
+          <div class="resp-hidden" id="rw-info">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Bank Info</span>
+                <span class="resp-status ok" id="rs-info">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-info"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── AUTHENTICATIE ─── -->
+      <div class="section" id="s-auth" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Authenticatie</div>
+          <div class="page-sub">POST /api/login — Token ophalen voor beveiligde endpoints</div>
+          <div class="form-card">
+            <div class="form-grid">
+              <div class="field"><label>Gebruikersnaam</label><input id="auth_user" value="admin"></div>
+              <div class="field"><label>Wachtwoord</label><input id="auth_pass" type="password" value="Pingfin2026!"></div>
+            </div>
+            <button class="btn-primary" onclick="doLogin()">Inloggen</button>
+          </div>
+          <div class="resp-hidden" id="rw-auth">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Response</span>
+                <span class="resp-status ok" id="rs-auth">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-auth"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── REKENINGEN ─── -->
+      <div class="section" id="s-accounts" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Alle Rekeningen</div>
+          <div class="page-sub">GET /api/accounts — Bankrekeningenlijst met saldo</div>
+          <button class="btn-primary" onclick="loadAccounts()">Laad Rekeningen</button>
+          <div class="resp-hidden" id="rw-accounts">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Rekeningen</span>
+                <span class="resp-status ok" id="rs-accounts">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-accounts"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── GENEREER POs ─── -->
+      <div class="section" id="s-po-gen" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Genereer Payment Orders</div>
+          <div class="page-sub">GET /api/po_new_generate — Automatisch POs aanmaken</div>
+          <div class="form-card">
+            <div class="form-grid-3">
+              <div class="field"><label>Aantal</label><input id="gen_count" type="number" value="3"></div>
+              <div class="field"><label>Min (€)</label><input id="gen_min" type="number" value="1"></div>
+              <div class="field"><label>Max (€)</label><input id="gen_max" type="number" value="500"></div>
+            </div>
+            <button class="btn-primary" onclick="generatePos()">Genereer</button>
+          </div>
+          <div class="resp-hidden" id="rw-po-gen">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">POs Gegenereerd</span>
+                <span class="resp-status" id="rs-po-gen"></span>
+              </div>
+              <div class="resp-body" id="rb-po-gen"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── VOEG PO TOE ─── -->
+      <div class="section" id="s-po-add" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Voeg Payment Order Toe</div>
+          <div class="page-sub">POST /api/po_new_add — Handmatig een PO invoegen</div>
+          <div class="form-card">
+            <div class="form-grid">
+              <div class="field"><label>Bedrag (€)</label><input id="add_amount" type="number" value="100"></div>
+              <div class="field"><label>Bericht</label><input id="add_message" value="Payment"></div>
+              <div class="field"><label>BB ID (BIC)</label><input id="add_bb_id" value="GEBABEBB"></div>
+              <div class="field"><label>OA ID (IBAN afzender)</label><input id="add_oa_id" value="OA001"></div>
+              <div class="field"><label>BA ID (IBAN ontvanger)</label><input id="add_ba_id" value="BE68539007547034"></div>
+            </div>
+            <button class="btn-primary" onclick="addPo()">Voeg toe</button>
+          </div>
+          <div class="resp-hidden" id="rw-po-add">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Response</span>
+                <span class="resp-status" id="rs-po-add"></span>
+              </div>
+              <div class="resp-body" id="rb-po-add"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── VERWERK NAAR CB ─── -->
+      <div class="section" id="s-po-process" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Verwerk naar CB</div>
+          <div class="page-sub">GET /api/po_new_process — POs valideren en doorsturen naar CB (vereist token)</div>
+          <button class="btn-primary" onclick="processPos()">Verwerk POs</button>
+          <div class="resp-hidden" id="rw-po-process">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Verwerkingsresultaat</span>
+                <span class="resp-status" id="rs-po-process"></span>
+              </div>
+              <div class="resp-body" id="rb-po-process"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PO-OUT ─── -->
+      <div class="section" id="s-po-out" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">PO-out</div>
+          <div class="page-sub">GET /api/po_out — Inhoud van de PO_OUT tabel</div>
+          <button class="btn-primary" onclick="simpleGet('/api/po_out','po-out')">Laad PO-out</button>
+          <div class="resp-hidden" id="rw-po-out">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">PO-out</span>
+                <span class="resp-status ok" id="rs-po-out">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-po-out"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── INKOMENDE POs ─── -->
+      <div class="section" id="s-po-in" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Inkomende POs</div>
+          <div class="page-sub">GET /api/cb/poll_po — Inkomende POs ophalen van CB en verwerken</div>
+          <button class="btn-primary" onclick="simpleGet('/api/cb/poll_po','po-in')">Ophalen van CB</button>
+          <div class="resp-hidden" id="rw-po-in">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Inkomende POs</span>
+                <span class="resp-status ok" id="rs-po-in">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-po-in"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── ACKs OPHALEN ─── -->
+      <div class="section" id="s-ack-fetch" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">ACKs Ophalen</div>
+          <div class="page-sub">GET /api/cb/poll_ack — Inkomende ACKs ophalen van CB</div>
+          <button class="btn-primary" onclick="simpleGet('/api/cb/poll_ack','ack-fetch')">Ophalen van CB</button>
+          <div class="resp-hidden" id="rw-ack-fetch">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">ACKs van CB</span>
+                <span class="resp-status ok" id="rs-ack-fetch">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-ack-fetch"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── ACK-IN ─── -->
+      <div class="section" id="s-ack-in" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">ACK-in</div>
+          <div class="page-sub">GET /api/ack_in — Opgeslagen inkomende ACKs</div>
+          <button class="btn-primary" onclick="simpleGet('/api/ack_in','ack-in')">Laad ACK-in</button>
+          <div class="resp-hidden" id="rw-ack-in">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">ACK-in</span>
+                <span class="resp-status ok" id="rs-ack-in">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-ack-in"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── ACK-OUT ─── -->
+      <div class="section" id="s-ack-out" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">ACK-out</div>
+          <div class="page-sub">GET /api/ack_out — ACKs ophalen van de CB</div>
+          <button class="btn-primary" onclick="simpleGet('/api/ack_out','ack-out')">Laad ACK-out</button>
+          <div class="resp-hidden" id="rw-ack-out">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">ACK-out</span>
+                <span class="resp-status ok" id="rs-ack-out">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-ack-out"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TRANSACTIES ─── -->
+      <div class="section" id="s-transactions" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Transacties</div>
+          <div class="page-sub">GET /api/transactions — Alle verwerkte transacties</div>
+          <button class="btn-primary" onclick="simpleGet('/api/transactions','transactions')">Laad Transacties</button>
+          <div class="resp-hidden" id="rw-transactions">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Transacties</span>
+                <span class="resp-status ok" id="rs-transactions">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-transactions"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── LOGS ─── -->
+      <div class="section" id="s-logs" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Logs</div>
+          <div class="page-sub">GET /api/logs — API-aanroepen en systeemgebeurtenissen</div>
+          <button class="btn-primary" onclick="loadLogs()">Laad Logs</button>
+          <div class="resp-hidden" id="rw-logs">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Logs</span>
+                <span class="resp-status ok" id="rs-logs">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-logs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end main -->
+  </div><!-- end body -->
+</div><!-- end app -->
 
 <script>
-  // Set header info from server
-  document.getElementById('serverUrl').textContent = window.location.host;
-  fetch('/api/info').then(r => r.json()).then(j => {
-    if (j.data) document.getElementById('headerTitle').textContent =
-      `${j.data.name || j.data.bic} — ADMIN PANEL`;
-  }).catch(() => {});
+/* ─── AUTH GUARD ─── */
+if (!localStorage.getItem('token')) window.location.href = '/login.html';
 
-  function toggleForm(id) {
-    const el = document.getElementById(id);
-    el.style.display = el.style.display === 'block' ? 'none' : 'block';
+function doLogout() {
+  localStorage.removeItem('token');
+  window.location.href = '/login.html';
+}
+
+document.getElementById('serverUrl').textContent = window.location.host;
+
+/* ─── ENDPOINT DATA (matches /api/help + extra routes) ─── */
+const EP_GROUPS = [
+  {
+    name: 'SYSTEEM',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`,
+    items: [
+      { method:'GET',  path:'/api/help',    desc:'Overzicht van alle beschikbare endpoints', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "endpoints": 12,\n    "get": 9,\n    "post": 3\n  }\n}' },
+      { method:'GET',  path:'/api/info',    desc:'Bank info: BIC, naam, teamleden', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "bic": "GKCCBEBB",\n    "name": "PingFin"\n  }\n}' }
+    ]
+  },
+  {
+    name: 'REKENINGEN',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>`,
+    items: [
+      { method:'GET',  path:'/api/accounts', desc:'Lijst van alle rekeningen met saldo', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": [\n    {\n      "id": "BE68539007547034",\n      "balance": "1250.00"\n    }\n  ]\n}' }
+    ]
+  },
+  {
+    name: 'PAYMENT ORDERS (OB FLOW)',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>`,
+    items: [
+      { method:'POST', path:'/api/po_new_add',     desc:'Nieuwe Payment Orders toevoegen aan PO_NEW', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": [],\n  "message": "1 PO(\'s) toegevoegd"\n}' },
+      { method:'GET',  path:'/api/po_new_process', desc:'POs valideren en doorsturen naar CB', auth:true,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "internal": 0,\n    "external": 1,\n    "rejected": 0\n  }\n}' },
+      { method:'GET',  path:'/api/po_out',         desc:'Inhoud van PO_OUT tabel', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' }
+    ]
+  },
+  {
+    name: 'ACKNOWLEDGEMENTS (BB FLOW)',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+    items: [
+      { method:'GET',  path:'/api/ack_out', desc:'ACKs ophalen van de CB', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' }
+    ]
+  },
+  {
+    name: 'PAYMENT ORDERS (BB FLOW)',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19l9-7 9 7M3 5l9 7 9-7"/></svg>`,
+    items: [
+      { method:'POST', path:'/api/po_in',       desc:'Inkomende POs ontvangen van CB', auth:true,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' },
+      { method:'GET',  path:'/api/cb/poll_po',  desc:'Inkomende POs ophalen van CB en verwerken', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' },
+      { method:'GET',  path:'/api/cb/poll_ack', desc:'Inkomende ACKs ophalen van CB', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' }
+    ]
+  },
+  {
+    name: 'MONITORING',
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`,
+    items: [
+      { method:'GET',  path:'/api/transactions', desc:'Alle verwerkte transacties', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": []\n}' },
+      { method:'POST', path:'/api/login',        desc:'Inloggen en token ophalen', auth:false,
+        resp:'{\n  "ok": true,\n  "data": {\n    "token": "gkccbebb_token_2026"\n  }\n}' }
+    ]
   }
+];
 
-  function showResponse(title, status, body, html) {
-    const panel = document.getElementById('responsePanel');
-    panel.style.display = 'block';
-    document.getElementById('responseTitle').textContent = title;
-    const st = document.getElementById('responseStatus');
-    st.textContent = 'STATUS ' + status;
-    st.className = String(status).startsWith('2') ? 'status-ok' : 'status-err';
-    const bodyEl = document.getElementById('responseBody');
-    if (html) {
-      bodyEl.style.whiteSpace = 'normal';
-      bodyEl.innerHTML = html;
-    } else {
-      bodyEl.style.whiteSpace = 'pre-wrap';
-      let display = body;
-      try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
-      bodyEl.textContent = display;
-    }
-    panel.scrollIntoView({ behavior: 'smooth' });
-  }
+/* ─── RENDER ENDPOINT LIST ─── */
+function renderEndpoints() {
+  const container = document.getElementById('epContainer');
+  let html = '';
+  let total=0, gets=0, posts=0, auths=0;
 
-  async function api(method, url, title) {
-    showResponse(title, '...', 'Bezig...');
-    try {
-      const res  = await fetch(url, { method });
-      const text = await res.text();
-      showResponse(title, res.status, text);
-    } catch(e) {
-      showResponse(title, 'ERROR', e.message);
-    }
-  }
+  EP_GROUPS.forEach(group => {
+    let rows = '';
+    group.items.forEach((ep, idx) => {
+      total++;
+      if (ep.method === 'GET')  gets++;
+      if (ep.method === 'POST') posts++;
+      if (ep.auth)              auths++;
 
-  async function loadAccounts() {
-    showResponse('Accounts ophalen', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/accounts');
-      const json = await res.json();
-      const data = json.data;
-      const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
-      const rows = data.map(a => `
-        <tr>
-          <td style="font-family:'Courier New',monospace;font-size:11px">${a.id}</td>
-          <td style="color:${parseFloat(a.balance) > 0 ? '#68d391' : '#fc8181'};font-weight:bold;text-align:right">
-            €${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}
-          </td>
-        </tr>`).join('');
-      const html = `
-        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px">
-          <span style="color:#718096">${data.length} rekeningen</span>
-          <span style="color:#48bb78">Totaal: €${total.toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
+      const authLabel = ep.auth ? 'Auth: JA' : 'Auth: NEE';
+      const authCls   = ep.auth ? 'yes' : 'no';
+      const methCls   = ep.method.toLowerCase();
+
+      rows += `
+        <div class="ep-item"
+             data-method="${ep.method}"
+             data-auth="${ep.auth ? 'ja' : 'nee'}"
+             data-text="${ep.path.toLowerCase()} ${ep.desc.toLowerCase()}"
+             onclick="selectEp(this,'${ep.method}','${ep.path.replace(/'/g,"\\'")}','${ep.desc.replace(/'/g,"\\'")}',${ep.auth},'${ep.resp.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+          <span class="ep-badge ${methCls}">${ep.method}</span>
+          <span class="ep-path">${ep.path}</span>
+          <span class="ep-desc">${ep.desc}</span>
+          <span class="ep-auth ${authCls}">${authLabel}</span>
+          <svg class="ep-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>`;
+    });
+
+    html += `
+      <div class="ep-group" data-group="${group.name}">
+        <div class="ep-group-header">
+          ${group.icon}
+          ${group.name}
+          <span class="ep-group-count">${group.items.length}</span>
         </div>
-        <table class="accounts-table">
-          <thead><tr><th>IBAN</th><th style="text-align:right">Saldo</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      showResponse('Accounts ophalen', res.status, null, html);
-    } catch(e) {
-      showResponse('Accounts ophalen', 'ERROR', e.message);
-    }
+        ${rows}
+      </div>`;
+  });
+
+  container.innerHTML = html;
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-get').textContent   = gets;
+  document.getElementById('st-post').textContent  = posts;
+  document.getElementById('st-auth').textContent  = auths;
+}
+
+/* ─── SELECT ENDPOINT ─── */
+let currentResp = '';
+
+function selectEp(el, method, path, desc, auth, resp) {
+  document.querySelectorAll('.ep-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+
+  const badge = document.getElementById('rpBadge');
+  badge.textContent  = method;
+  badge.className    = 'rp-badge ' + method.toLowerCase();
+
+  document.getElementById('rpPath').textContent = path;
+  document.getElementById('rpDesc').textContent = desc;
+
+  const authEl = document.getElementById('rpAuth');
+  if (auth) {
+    authEl.textContent  = 'Vereist';
+    authEl.className    = 'rp-auth-badge yes';
+  } else {
+    authEl.textContent  = 'Niet vereist';
+    authEl.className    = 'rp-auth-badge no';
   }
 
-  async function generatePos() {
-    const count = document.getElementById('gen_count').value;
-    const min   = document.getElementById('gen_min').value;
-    const max   = document.getElementById('gen_max').value;
-    await api('GET', `/api/po_new_generate?count=${count}&min=${min}&max=${max}`, 'POs genereren');
-  }
+  currentResp = resp;
+  document.getElementById('rpCode').textContent = resp;
 
-  async function loadHelp() {
-    showResponse('API Help', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/help');
-      const json = await res.json();
-      const rows = json.data.map(e => `
-        <tr>
-          <td style="color:${e.method==='GET'?'#48bb78':'#f6ad55'};font-weight:bold;font-size:10px;letter-spacing:.08em">${e.method}</td>
-          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${e.path}</td>
-          <td style="font-size:11px;color:#a0aec0">${e.desc}</td>
-          <td style="font-size:10px;color:${e.auth?'#fc8181':'#68d391'};text-align:center">${e.auth?'Ja':'Nee'}</td>
-        </tr>`).join('');
-      const html = `
-        <div style="margin-bottom:10px;font-size:11px;color:#718096">${json.message}</div>
-        <table class="accounts-table">
-          <thead><tr><th>Methode</th><th>Endpoint</th><th>Beschrijving</th><th style="text-align:center">Auth</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      showResponse('API Help', res.status, null, html);
-    } catch(e) {
-      showResponse('API Help', 'ERROR', e.message);
-    }
-  }
+  document.getElementById('rpPlaceholder').style.display = 'none';
+  document.getElementById('rpDetail').classList.add('visible');
+}
 
-  async function addPo() {
-    const body = { data: [{
-      po_amount: parseFloat(document.getElementById('add_amount').value),
-      po_message: document.getElementById('add_message').value,
-      bb_id:  document.getElementById('add_bb_id').value,
-      oa_id:  document.getElementById('add_oa_id').value,
-      ba_id:  document.getElementById('add_ba_id').value,
-    }]};
-    showResponse('POST /api/po_new_add', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/po_new_add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const text = await res.text();
-      showResponse('POST /api/po_new_add', res.status, text);
-    } catch(e) {
-      showResponse('POST /api/po_new_add', 'ERROR', e.message);
-    }
+/* ─── COPY CODE ─── */
+function copyCode() {
+  navigator.clipboard.writeText(currentResp).catch(() => {});
+}
+
+/* ─── FILTER ─── */
+function filterEp() {
+  const q    = document.getElementById('epSearch').value.toLowerCase();
+  const meth = document.getElementById('epMethod').value;
+  const auth = document.getElementById('epAuth').value;
+
+  document.querySelectorAll('.ep-item').forEach(el => {
+    const text    = el.dataset.text || '';
+    const elMeth  = el.dataset.method;
+    const elAuth  = el.dataset.auth;
+
+    const okText  = !q    || text.includes(q);
+    const okMeth  = !meth || elMeth === meth;
+    const okAuth  = !auth || elAuth === auth;
+
+    el.style.display = (okText && okMeth && okAuth) ? 'flex' : 'none';
+  });
+
+  /* hide empty groups */
+  document.querySelectorAll('.ep-group').forEach(g => {
+    const visible = [...g.querySelectorAll('.ep-item')].some(i => i.style.display !== 'none');
+    g.style.display = visible ? 'block' : 'none';
+  });
+}
+
+/* ─── NAVIGATION ─── */
+function nav(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(n => n.classList.remove('active'));
+  const sec = document.getElementById('s-' + id);
+  if (sec) sec.classList.add('active');
+  if (el)  el.classList.add('active');
+}
+
+/* ─── SHOW/HIDE RESPONSE ─── */
+function showResp(key, status, body, isOk) {
+  const rw = document.getElementById('rw-' + key);
+  const rs = document.getElementById('rs-' + key);
+  const rb = document.getElementById('rb-' + key);
+  if (!rw) return;
+  rw.classList.remove('resp-hidden');
+  if (rs) { rs.textContent = status; rs.className = 'resp-status ' + (isOk ? 'ok' : 'err'); }
+  if (rb) rb.textContent = body;
+}
+
+/* ─── API HELPERS ─── */
+async function simpleGet(url, key) {
+  try {
+    const res  = await fetch(url);
+    const text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+    showResp(key, res.status + ' ' + (res.ok ? 'OK' : 'Error'), pretty, res.ok);
+  } catch(e) {
+    showResp(key, 'Error', e.message, false);
   }
+}
+
+async function loadInfo() {
+  try {
+    const res  = await fetch('/api/info');
+    const json = await res.json();
+    showResp('info', '200 OK', JSON.stringify(json, null, 2), true);
+  } catch(e) { showResp('info', 'Error', e.message, false); }
+}
+
+async function doLogin() {
+  const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
+  try {
+    const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const json = await res.json();
+    if (json.data?.token) localStorage.setItem('token', json.data.token);
+    showResp('auth', res.status + (res.ok?' OK':' Error'), JSON.stringify(json, null, 2), res.ok);
+  } catch(e) { showResp('auth', 'Error', e.message, false); }
+}
+
+async function loadAccounts() {
+  try {
+    const res  = await fetch('/api/accounts');
+    const json = await res.json();
+    const data = json.data || [];
+    const rows = data.map(a =>
+      `<tr><td>${a.id}</td><td class="balance">€${parseFloat(a.balance||0).toFixed(2)}</td></tr>`
+    ).join('');
+    const total = data.reduce((s,a) => s + parseFloat(a.balance||0), 0);
+    document.getElementById('rw-accounts').classList.remove('resp-hidden');
+    document.getElementById('rb-accounts').innerHTML =
+      `<table class="data-table"><thead><tr><th>IBAN</th><th>Saldo</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<br>Totaal: €${total.toFixed(2)} — ${data.length} rekening(en)`;
+    document.getElementById('rs-accounts').textContent = '200 OK';
+  } catch(e) { showResp('accounts', 'Error', e.message, false); }
+}
+
+async function generatePos() {
+  const count = document.getElementById('gen_count').value;
+  const min   = document.getElementById('gen_min').value;
+  const max   = document.getElementById('gen_max').value;
+  try {
+    const res  = await fetch(`/api/po_new_generate?count=${count}&min=${min}&max=${max}`);
+    const text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+    showResp('po-gen', res.status + (res.ok?' OK':' Error'), pretty, res.ok);
+  } catch(e) { showResp('po-gen', 'Error', e.message, false); }
+}
+
+async function addPo() {
+  const body = { data: [{
+    po_amount: parseFloat(document.getElementById('add_amount').value),
+    po_message: document.getElementById('add_message').value,
+    bb_id: document.getElementById('add_bb_id').value,
+    oa_id: document.getElementById('add_oa_id').value,
+    ba_id: document.getElementById('add_ba_id').value
+  }]};
+  try {
+    const res  = await fetch('/api/po_new_add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+    showResp('po-add', res.status + (res.ok?' OK':' Error'), pretty, res.ok);
+  } catch(e) { showResp('po-add', 'Error', e.message, false); }
+}
+
+async function processPos() {
+  const token = localStorage.getItem('token') || '';
+  try {
+    const res  = await fetch('/api/po_new_process', { headers:{ Authorization: 'Bearer ' + token } });
+    const text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+    showResp('po-process', res.status + (res.ok?' OK':' Error'), pretty, res.ok);
+  } catch(e) { showResp('po-process', 'Error', e.message, false); }
+}
+
+async function loadLogs() {
+  try {
+    const res  = await fetch('/api/logs');
+    const json = await res.json();
+    const data = json.data || [];
+    const rows = data.map(l =>
+      `<tr>
+        <td style="color:var(--text3);font-family:var(--mono);font-size:11px;">${l.datetime || ''}</td>
+        <td><span style="font-family:var(--mono);font-size:10px;background:var(--accent-light);color:var(--accent);padding:2px 7px;border-radius:4px;">${l.type || ''}</span></td>
+        <td>${l.message || ''}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3);">${l.po_id || '—'}</td>
+      </tr>`
+    ).join('');
+    document.getElementById('rw-logs').classList.remove('resp-hidden');
+    document.getElementById('rs-logs').textContent = '200 OK';
+    document.getElementById('rb-logs').innerHTML =
+      `<div style="padding:10px 0 6px;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;">${data.length} log(s)</div>` +
+      `<table class="data-table">
+        <thead><tr><th>Datetime</th><th>Type</th><th>Message</th><th>PO ID</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) { showResp('logs', 'Error', e.message, false); }
+}
+
+/* ─── INIT ─── */
+renderEndpoints();
 </script>
-
 </body>
 </html>
