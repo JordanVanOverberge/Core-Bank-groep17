@@ -73,9 +73,9 @@ router.post('/po_in', auth, async (req, res) => {
             [po.po_amount, po.ba_id]
           );
           await pool.query(
-            `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE id = id`,
+            `INSERT INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+             VALUES (?, ?, ?, ?, ?, 1, 1)
+             ON DUPLICATE KEY UPDATE isvalid=1, iscomplete=1`,
             [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
           );
         }
