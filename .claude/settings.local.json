@@ -3,7 +3,15 @@
     "allow": [
       "PowerShell(Get-Process -Id 26536 -ErrorAction SilentlyContinue)",
       "PowerShell(Stop-Process -Id 26536 -Force)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3001)",
+      "Bash(tasklist /fi \"PID eq 30320\")",
+      "PowerShell(Get-Process -Id 30320)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 | Select-Object LocalAddress, LocalPort, OwningProcess; Get-Process -Id \\(Get-NetTCPConnection -LocalPort 3001\\).OwningProcess -ErrorAction SilentlyContinue | Select-Object Name, Id)",
+      "PowerShell(try { $p = Get-Process -Id 30320 -ErrorAction Stop; \"$\\($p.Name\\) \\(PID $\\($p.Id\\)\\)\" } catch { \"Proces niet gevonden of al gestopt\" })",
+      "PowerShell(Stop-Process -Id 30320 -Force)",
+      "PowerShell(\"Proces gestopt\")"
     ]
   }
 }
