@@ -74,4 +74,9 @@ router.get('/banks', async (_req, res) => {
   }
 });
 
+// Test-only: exposes CB_SECRET so the frontend can call /api/po_in with the correct token
+router.get('/debug/bank_secret', (_req, res) => {
+  ok(res, { token: process.env.CB_SECRET }, 'Bank secret voor po_in authenticatie');
+});
+
 module.exports = router;
