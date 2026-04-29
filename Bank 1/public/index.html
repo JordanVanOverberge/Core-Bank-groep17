@@ -701,7 +701,7 @@
         <div class="page-sub">Nieuwe betaling indienen in PO_NEW</div>
       </div>
       <div class="card-grid">
-        <button class="card" onclick="toggleForm('poAddForm')">
+        <button class="card" onclick="toggleForm('poAddForm'); loadBanksForDropdown();">
           <div class="card-method post">POST</div>
           <div class="card-name">Voeg PO toe</div>
           <div class="card-endpoint">/api/po_new_add</div>
@@ -710,7 +710,10 @@
       <div class="form-panel" id="poAddForm">
         <div class="form-grid">
           <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
-          <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
+          <div class="field">
+            <label>BIC ontvanger (BB)</label>
+            <select id="add_bb_id" class="field" style="width: 100%; background: var(--surface3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 12px; font-family: var(--mono); color: var(--text);"></select>
+          </div>
           <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
           <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
           <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
@@ -922,6 +925,24 @@
       bodyEl.textContent = display;
     }
     wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  async function loadBanksForDropdown() {
+    try {
+      const res = await fetch('/api/banks');
+      const json = await res.json();
+      const banks = json.data || [];
+      const select = document.getElementById('add_bb_id');
+      select.innerHTML = ''; // Clear existing options
+      banks.forEach(bank => {
+        const option = document.createElement('option');
+        option.value = bank.id ?? bank.bic;
+        option.textContent = `${bank.name} (${bank.id ?? bank.bic})`;
+        select.appendChild(option);
+      });
+    } catch (e) {
+      console.error('Failed to load banks for dropdown:', e);
+    }
   }
 
   async function simpleApi(method, url, title, key) {

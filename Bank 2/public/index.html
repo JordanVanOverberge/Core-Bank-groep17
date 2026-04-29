@@ -432,7 +432,7 @@
         </svg>
         Genereer POs
       </div>
-      <div class="sb-item" onclick="nav('po-add',this)">
+      <div class="sb-item" onclick="nav('po-add',this); loadBanksForDropdown();">
         <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -789,7 +789,10 @@
             <div class="form-grid">
               <div class="field"><label>Bedrag (€)</label><input id="add_amount" type="number" value="100"></div>
               <div class="field"><label>Bericht</label><input id="add_message" value="Payment"></div>
-              <div class="field"><label>BB ID (BIC)</label><input id="add_bb_id" value="GEBABEBB"></div>
+              <div class="field">
+                <label>BB ID (BIC)</label>
+                <select id="add_bb_id" class="field" style="width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; font-size: 13px; font-family: inherit; color: var(--text);"></select>
+              </div>
               <div class="field"><label>OA ID (IBAN afzender)</label><input id="add_oa_id" value="OA001"></div>
               <div class="field"><label>BA ID (IBAN ontvanger)</label><input id="add_ba_id" value="BE68539007547034"></div>
               <div class="field"><label>PO ID <span style="font-weight:400;opacity:.6">(optioneel – leeg = automatisch)</span></label><input id="add_po_id" placeholder="bv. GKCCBEBB_1234_abc"></div>
@@ -1170,15 +1173,47 @@ function showResp(key, status, body, isOk) {
 }
 
 /* ─── API HELPERS ─── */
+async function setResp(key, status, body) {
+  const wrap = document.getElementById('rw-' + key);
+  const stat = document.getElementById('rs-' + key);
+  const bod  = document.getElementById('rb-' + key);
+  if (!wrap || !stat || !bod) return;
+  wrap.classList.remove('resp-hidden');
+  stat.textContent = status;
+  stat.className = 'resp-status ' + (String(status).startsWith('2') ? 'ok' : 'err');
+  try {
+    bod.innerHTML = syntaxHl(JSON.stringify(JSON.parse(body), null, 2));
+  } catch(e) {
+    bod.innerHTML = body;
+  }
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function loadBanksForDropdown() {
+  try {
+    const res = await fetch('/api/banks');
+    const json = await res.json();
+    const banks = json.data || [];
+    const select = document.getElementById('add_bb_id');
+    select.innerHTML = ''; // Clear existing options
+    banks.forEach(bank => {
+      const option = document.createElement('option');
+      option.value = bank.id ?? bank.bic;
+      option.textContent = `${bank.name} (${bank.id ?? bank.bic})`;
+      select.appendChild(option);
+    });
+  } catch (e) {
+    console.error('Failed to load banks for dropdown:', e);
+  }
+}
+
 async function simpleGet(url, key) {
   try {
-    const res  = await fetch(url);
-    const text = await res.text();
-    let pretty = text;
-    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
-    showResp(key, res.status + ' ' + (res.ok ? 'OK' : 'Error'), pretty, res.ok);
+    const res = await fetch(url);
+    const txt = await res.text();
+    setResp(key, res.status, txt);
   } catch(e) {
-    showResp(key, 'Error', e.message, false);
+    setResp(key, 'ERROR', e.message);
   }
 }
 
