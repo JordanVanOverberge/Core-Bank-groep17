@@ -1,7 +1,8 @@
 const express = require('express');
 const router  = express.Router();
 const { pool } = require('../db');
-const cb = require('../middleware/cbApi');
+const cb   = require('../middleware/cbApi');
+const auth = require('../middleware/auth');
 
 const BIC   = () => process.env.BANK_BIC;
 const now   = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -130,6 +131,10 @@ router.get('/po_new_process', async (_req, res) => {
       await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
       await pool.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
       await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
+      await pool.query(
+        `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+         VALUES (?, ?, ?, ?, ?, 1, 1)`,
+        [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
       await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
         [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
     }
@@ -241,6 +246,7 @@ router.get('/cb/poll_ack', async (_req, res) => {
     const data = await cb.fetchAckOut();
     const acks = data.data || [];
     for (const ack of acks) {
+      const ts = now();
       await pool.query(
         `INSERT IGNORE INTO ack_in
            (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime,
@@ -250,8 +256,17 @@ router.get('/cb/poll_ack', async (_req, res) => {
          ack.ob_id, ack.oa_id, ack.ob_code||null, ack.ob_datetime||null,
          ack.cb_code||null, ack.cb_datetime||null,
          ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]);
+      if (String(ack.bb_code) === '2000') {
+        await pool.query(
+          'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+          [ack.po_amount, ack.oa_id]);
+        await pool.query(
+          `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+           VALUES (?, ?, ?, ?, ?, 1, 1)`,
+          [`TXN_DEBIT_${ack.po_id}`, ack.po_amount, ts, ack.po_id, ack.oa_id]);
+      }
       await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
-        [now(), 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
+        [ts, 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
     }
     return ok(res, acks, `${acks.length} ACK('s) ontvangen`);
   } catch (err) {

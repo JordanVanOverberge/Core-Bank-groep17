@@ -2,6 +2,7 @@ const express        = require('express');
 const router         = express.Router();
 const pool           = require('../db');
 const { getCBToken } = require('../services/cbToken');
+const auth           = require('../middleware/auth');
 
 const ok   = (res, data, msg = 'OK', status = 200) =>
   res.status(status).json({ ok: true,  status, code: 2000,          message: msg, data });
@@ -22,15 +23,15 @@ const CB_CODES = {
   4003: 'Bedrag is negatief of nul',
   4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
   4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
-  4006: 'PO_ID ongeldig (moet beginnen met GKCCBEBB_)'
+  4006: 'PO_ID ongeldig (moet beginnen met eigen BIC)',
 };
 
 function localValidate(po) {
   if (po.po_amount <= 0)              return 4003;
   if (po.po_amount > MAX_AMOUNT)      return 4002;
   if (po.bb_id === process.env.BIC)   return 4001; // internal payment
-  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN
-  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC
+  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN format
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC format
   if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006; // invalid PO_ID
   return null;
 }
@@ -165,6 +166,13 @@ router.get('/po_new_process', async (_req, res) => {
         'UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
       await pool.query(
         'UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
+      try {
+        await pool.query(
+          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
+      } catch (_) {}
       try {
         await pool.query(
           'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',

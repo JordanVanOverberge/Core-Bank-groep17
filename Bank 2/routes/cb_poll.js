@@ -48,18 +48,24 @@ router.get('/cb/poll_po', async (_req, res) => {
       );
     } catch (_) {}
 
-    // Crediteer ontvangende rekening en registreer transactie
+    // Crediteer ontvangende rekening en registreer transactie (enkel bij geldig account)
+    let bb_code = 2000;
     try {
-      await pool.query(
-        'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-        [po.po_amount, po.ba_id]
-      );
-      await pool.query(
-        `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE id = id`,
-        [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
-      );
+      const [accts] = await pool.query('SELECT id FROM accounts WHERE id = ?', [po.ba_id]);
+      if (accts.length === 0) {
+        bb_code = 4004;
+      } else {
+        await pool.query(
+          'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+          [po.po_amount, po.ba_id]
+        );
+        await pool.query(
+          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
+        );
+      }
     } catch (_) {}
 
     // Bouw ACK op
@@ -68,7 +74,7 @@ router.get('/cb/poll_po', async (_req, res) => {
       po_datetime: po.po_datetime,
       ob_id: po.ob_id, oa_id: po.oa_id, ob_code: po.ob_code ?? null, ob_datetime: po.ob_datetime ?? null,
       cb_code: po.cb_code ?? null, cb_datetime: po.cb_datetime ?? null,
-      bb_id: process.env.BIC, ba_id: po.ba_id, bb_code: 2000, bb_datetime: ts
+      bb_id: process.env.BIC, ba_id: po.ba_id, bb_code, bb_datetime: ts
     };
 
     // Sla ACK op in ack_out
@@ -148,6 +154,18 @@ router.get('/cb/poll_ack', async (_req, res) => {
          ack.bb_id, ack.ba_id, ack.bb_code, ack.bb_datetime]
       );
     } catch (_) {}
+    if (String(ack.bb_code) === '2000') {
+      try {
+        await pool.query(
+          'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+          [ack.po_amount, ack.oa_id]);
+        await pool.query(
+          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [`TXN_DEBIT_${ack.po_id}`, ack.po_amount, ts, ack.po_id, ack.oa_id]);
+      } catch (_) {}
+    }
     try {
       await pool.query(
         'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',

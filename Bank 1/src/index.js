@@ -24,7 +24,7 @@ app.get('/api/help', (req, res) =>
     { method: 'GET',  path: '/api/info',              desc: 'Bank info: BIC, naam, teamleden',                                       auth: false },
     { method: 'GET',  path: '/api/accounts',          desc: 'Lijst van alle rekeningen met saldo',                                   auth: false },
     { method: 'POST', path: '/api/po_new_add',        desc: 'Nieuwe Payment Orders toevoegen aan PO_NEW',                            auth: false },
-    { method: 'GET',  path: '/api/po_new_process',    desc: 'POs valideren en doorsturen naar CB',                                   auth: true  },
+    { method: 'GET',  path: '/api/po_new_process',    desc: 'POs valideren en doorsturen naar CB',                                   auth: false },
     { method: 'GET',  path: '/api/po_out',            desc: 'Inhoud van PO_OUT tabel',                                               auth: false },
     { method: 'GET',  path: '/api/ack_out',           desc: 'ACKs ophalen van de CB',                                                auth: false },
     { method: 'GET',  path: '/api/ack_in',            desc: 'ACKs van CB opslaan in ack_in tabel',                                   auth: false },

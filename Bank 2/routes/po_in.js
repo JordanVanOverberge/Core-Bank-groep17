@@ -17,15 +17,15 @@ const CB_CODES = {
   4003: 'Bedrag is negatief of nul',
   4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
   4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
-  4006: 'PO_ID ongeldig (moet beginnen met GKCCBEBB_)'
+  4006: 'PO_ID ongeldig (moet beginnen met eigen BIC)',
 };
 
 function validatePo(po) {
   if (po.po_amount <= 0)              return 4003;
   if (po.po_amount > MAX_AMOUNT)      return 4002;
-  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004;
-  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005;
-  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006;
+  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN format
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC format
+  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006; // invalid PO_ID
   return null;
 }
 
@@ -61,18 +61,24 @@ router.post('/po_in', auth, async (req, res) => {
          po.ob_id, po.oa_id, po.bb_id, po.ba_id]
       );
 
-      // Crediteer de ontvangende rekening en registreer transactie
+      // Crediteer de ontvangende rekening en registreer transactie (enkel bij geldig account)
+      let bb_code = 2000;
       try {
-        await pool.query(
-          'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-          [po.po_amount, po.ba_id]
-        );
-        await pool.query(
-          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
-           VALUES (?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE id = id`,
-          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
-        );
+        const [accts] = await pool.query('SELECT id FROM accounts WHERE id = ?', [po.ba_id]);
+        if (accts.length === 0) {
+          bb_code = 4004;
+        } else {
+          await pool.query(
+            'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+            [po.po_amount, po.ba_id]
+          );
+          await pool.query(
+            `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE id = id`,
+            [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
+          );
+        }
       } catch (_) {}
 
       // Bouw ACK op en sla op in ack_out
@@ -81,7 +87,7 @@ router.post('/po_in', auth, async (req, res) => {
         po_datetime: po.po_datetime,
         ob_id: po.ob_id, oa_id: po.oa_id, ob_code: null, ob_datetime: null,
         cb_code: po.cb_code ?? null, cb_datetime: po.cb_datetime ?? null,
-        bb_id: process.env.BIC, ba_id: po.ba_id, bb_code: 2000, bb_datetime: ts
+        bb_id: process.env.BIC, ba_id: po.ba_id, bb_code, bb_datetime: ts
       };
 
       await pool.query(
