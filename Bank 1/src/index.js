@@ -76,6 +76,24 @@ app.get('/api/ack_out', async (req, res) => {
   }
 });
 
+app.get('/api/po_new', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM po_new ORDER BY po_datetime DESC');
+    return ok(res, rows, `${rows.length} PO('s) in wachtrij`);
+  } catch (err) {
+    return fail(res, 'DB_ERROR', err.message);
+  }
+});
+
+app.get('/api/po_in', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM po_in ORDER BY po_datetime DESC');
+    return ok(res, rows, `${rows.length} ontvangen PO('s)`);
+  } catch (err) {
+    return fail(res, 'DB_ERROR', err.message);
+  }
+});
+
 app.get('/api/transactions', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM transactions ORDER BY datetime DESC');

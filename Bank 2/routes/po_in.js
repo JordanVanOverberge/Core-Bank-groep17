@@ -17,15 +17,13 @@ const CB_CODES = {
   4003: 'Bedrag is negatief of nul',
   4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
   4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
-  4006: 'PO_ID ongeldig (moet beginnen met GKCCBEBB_)'
 };
 
 function validatePo(po) {
-  if (po.po_amount <= 0)              return 4003;
-  if (po.po_amount > MAX_AMOUNT)      return 4002;
-  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004;
-  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005;
-  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006;
+  if (po.po_amount <= 0)                                        return 4003;
+  if (po.po_amount > MAX_AMOUNT)                                return 4002;
+  if (!/^BE\d{14}$/.test(po.ba_id))                            return 4004;
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11)         return 4005;
   return null;
 }
 

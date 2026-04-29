@@ -7,6 +7,22 @@ const ok   = (res, data, msg = 'OK', status = 200) =>
 const fail = (res, msg, status = 500, code = null) =>
   res.status(status).json({ ok: false, status, code: code ?? status * 10, message: msg, data: [] });
 
+// GET /api/po_new
+router.get('/po_new', async (_req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM po_new ORDER BY po_datetime DESC');
+    ok(res, rows, `${rows.length} PO('s) in wachtrij`);
+  } catch (err) { fail(res, err.message); }
+});
+
+// GET /api/po_in
+router.get('/po_in', async (_req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM po_in ORDER BY po_datetime DESC');
+    ok(res, rows, `${rows.length} ontvangen PO('s)`);
+  } catch (err) { fail(res, err.message); }
+});
+
 // GET /api/transactions
 router.get('/transactions', async (_req, res) => {
   try {

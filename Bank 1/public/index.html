@@ -1,326 +1,588 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PingFin — Admin Panel</title>
+  <title>PingFin Dashboard</title>
   <style>
+    :root {
+      --bg: #0b0f19; --surface: #131929; --card: #1a2235; --border: #243050;
+      --accent: #f7c948; --green: #34d399; --red: #f87171; --blue: #60a5fa;
+      --orange: #fb923c; --muted: #64748b; --text: #e2e8f0; --text2: #94a3b8;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
-    header { border-bottom: 1px solid #2d3748; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 14px; letter-spacing: 0.15em; color: #f7c948; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; display: inline-block; margin-right: 6px; }
-    .server-url { font-size: 12px; color: #718096; }
-    main { padding: 2rem; max-width: 960px; margin: 0 auto; }
-    .section { margin-bottom: 2rem; }
-    .section-title { font-size: 10px; letter-spacing: 0.15em; color: #718096; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #2d3748; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-    .btn { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; color: inherit; width: 100%; }
-    .btn:hover { background: #2d3748; border-color: #4a5568; }
-    .btn:active { transform: scale(0.98); }
-    .btn-method { font-size: 10px; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 5px; }
-    .btn-name { font-size: 13px; color: #e2e8f0; margin-bottom: 3px; }
-    .btn-endpoint { font-size: 11px; color: #718096; }
-    .get { color: #48bb78; }
-    .post { color: #f6ad55; }
-    .form-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 16px; margin-top: 10px; display: none; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .field label { display: block; font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-    .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 4px; padding: 7px 10px; font-size: 12px; font-family: 'Courier New', monospace; color: #e2e8f0; }
-    .field input:focus { outline: none; border-color: #f7c948; }
-    .submit-btn { background: #f7c948; color: #0f1117; border: none; border-radius: 4px; padding: 8px 18px; font-size: 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; }
-    .submit-btn:hover { background: #ecc333; }
-    .response-panel { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-top: 1.5rem; display: none; }
-    .response-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2d3748; }
-    .response-title { font-size: 11px; color: #718096; letter-spacing: 0.1em; text-transform: uppercase; }
-    .status-ok  { font-size: 11px; color: #48bb78; }
-    .status-err { font-size: 11px; color: #fc8181; }
-    .response-body { padding: 14px; font-size: 12px; color: #a0aec0; white-space: pre-wrap; max-height: 320px; overflow-y: auto; line-height: 1.7; }
-    .accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-    .accounts-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #718096; border-bottom: 1px solid #2d3748; }
-    .accounts-table td { padding: 8px 12px; border-bottom: 1px solid #1a202c; color: #e2e8f0; }
-    .accounts-table tr:hover td { background: #2d3748; }
+    body { font-family: 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; font-size: 13px; }
+
+    /* SIDEBAR */
+    #sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo h1 { font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
+    .sidebar-logo p { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    #bankName { font-size: 11px; color: var(--text2); margin-top: 6px; padding: 4px 8px; background: var(--card); border-radius: 4px; word-break: break-all; }
+    nav { padding: 10px 8px; flex: 1; overflow-y: auto; }
+    nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px; cursor: pointer; color: var(--text2); text-decoration: none; transition: all .15s; font-size: 12px; margin-bottom: 2px; }
+    nav a:hover { background: var(--card); color: var(--text); }
+    nav a.active { background: rgba(247,201,72,.1); color: var(--accent); font-weight: 600; }
+    nav a .icon { font-size: 15px; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* MAIN */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    #topbar h2 { font-size: 14px; font-weight: 600; }
+    .topbar-actions { display: flex; gap: 8px; align-items: center; }
+    #content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    /* TABS: hidden sections */
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    /* CARDS */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .info-item label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; display: block; margin-bottom: 3px; }
+    .info-item span { font-size: 13px; color: var(--text); font-weight: 500; }
+
+    /* STATS ROW */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.blue { color: var(--blue); }
+    .stat-value.gold { color: var(--accent); }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s; }
+    .btn:hover { background: #243050; }
+    .btn-primary { background: var(--accent); color: #0b0f19; border-color: var(--accent); font-weight: 600; }
+    .btn-primary:hover { background: #e6b83d; }
+    .btn-success { background: rgba(52,211,153,.1); color: var(--green); border-color: rgba(52,211,153,.3); }
+    .btn-success:hover { background: rgba(52,211,153,.2); }
+    .btn-danger { background: rgba(248,113,113,.1); color: var(--red); border-color: rgba(248,113,113,.3); }
+    .btn-danger:hover { background: rgba(248,113,113,.2); }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+
+    /* FORMS */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .field label { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    .field input, .field select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-size: 12px; color: var(--text); font-family: inherit; }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+
+    /* TABLES */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid rgba(36,48,80,.6); color: var(--text2); white-space: nowrap; }
+    tbody tr:hover td { background: var(--surface); color: var(--text); }
+    .mono { font-family: 'Courier New', monospace; font-size: 10px; }
+    .empty-state { text-align: center; padding: 32px; color: var(--muted); }
+
+    /* BADGES */
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .badge-ok { background: rgba(52,211,153,.15); color: var(--green); }
+    .badge-err { background: rgba(248,113,113,.15); color: var(--red); }
+    .badge-pending { background: rgba(251,146,60,.15); color: var(--orange); }
+    .badge-info { background: rgba(96,165,250,.15); color: var(--blue); }
+
+    /* TOAST */
+    #toast { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+    .toast-item { padding: 10px 16px; border-radius: 6px; font-size: 12px; min-width: 240px; animation: slideIn .2s ease; }
+    .toast-ok { background: rgba(52,211,153,.15); border: 1px solid rgba(52,211,153,.3); color: var(--green); }
+    .toast-err { background: rgba(248,113,113,.15); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+    @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* SPINNER */
+    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* MEMBERS */
+    .member-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .member-tag { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--text2); }
   </style>
 </head>
 <body>
 
-<header>
-  <h1 id="headerTitle">PINGFIN — ADMIN PANEL</h1>
-  <span class="server-url"><span class="dot"></span><span id="serverUrl"></span></span>
-</header>
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <h1>PingFin</h1>
+    <p>SEPA Banking Dashboard</p>
+    <div id="bankName">Laden...</div>
+  </div>
+  <nav>
+    <a class="active" onclick="show('info')" id="tab-info"><span class="icon">🏦</span> Bank Info</a>
+    <a onclick="show('accounts')" id="tab-accounts"><span class="icon">💳</span> Rekeningen</a>
+    <a onclick="show('ob')" id="tab-ob"><span class="icon">📤</span> Betalen (OB)</a>
+    <a onclick="show('bb')" id="tab-bb"><span class="icon">📥</span> Ontvangen (BB)</a>
+    <a onclick="show('acks')" id="tab-acks"><span class="icon">✅</span> ACKs</a>
+    <a onclick="show('tx')" id="tab-tx"><span class="icon">💰</span> Transacties</a>
+    <a onclick="show('logs')" id="tab-logs"><span class="icon">📋</span> Logs</a>
+  </nav>
+  <div class="sidebar-footer"><span class="status-dot"></span>Online &nbsp;·&nbsp; <span id="lastUpdate">-</span></div>
+</div>
 
-<main>
-
-  <!-- DOCUMENTATIE -->
-  <div class="section">
-    <div class="section-title">Documentatie</div>
-    <div class="grid">
-      <button class="btn" onclick="loadHelp()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">API Help</div>
-        <div class="btn-endpoint">/api/help</div>
-      </button>
+<div id="main">
+  <div id="topbar">
+    <h2 id="topTitle">Bank Info</h2>
+    <div class="topbar-actions">
+      <button class="btn btn-sm" onclick="refreshCurrent()">↻ Vernieuwen</button>
     </div>
   </div>
 
-  <!-- ACCOUNTS -->
-  <div class="section">
-    <div class="section-title">Accounts</div>
-    <div class="grid">
-      <button class="btn" onclick="loadAccounts()">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Alle rekeningen</div>
-        <div class="btn-endpoint">/api/accounts</div>
-      </button>
-    </div>
-  </div>
+  <div id="content">
 
-  <!-- AUTHENTICATIE -->
-  <div class="section">
-    <div class="section-title">Authenticatie</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/token','Token ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer CB token</div>
-        <div class="btn-endpoint">/api/token</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- OB FLOW -->
-  <div class="section">
-    <div class="section-title">Payment Orders — OB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="toggleForm('generateForm')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Genereer POs</div>
-        <div class="btn-endpoint">/api/po_new_generate</div>
-      </button>
-      <button class="btn" onclick="toggleForm('poAddForm')">
-        <div class="btn-method post">POST</div>
-        <div class="btn-name">Voeg PO toe</div>
-        <div class="btn-endpoint">/api/po_new_add</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_new_process','POs verwerken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Verwerk POs naar CB</div>
-        <div class="btn-endpoint">/api/po_new_process</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/po_out','PO-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk PO-out</div>
-        <div class="btn-endpoint">/api/po_out</div>
-      </button>
-    </div>
-
-    <div class="form-panel" id="generateForm">
-      <div class="form-grid-3">
-        <div class="field"><label>Aantal</label><input id="gen_count" value="3" /></div>
-        <div class="field"><label>Min (€)</label><input id="gen_min" value="1" /></div>
-        <div class="field"><label>Max (€)</label><input id="gen_max" value="500" /></div>
+    <!-- SECTIE 1: BANK INFO -->
+    <div class="tab-section active" id="sec-info">
+      <div class="card">
+        <div class="card-title">Bank Info</div>
+        <div class="info-grid" id="infoGrid"><div style="color:var(--muted)">Laden...</div></div>
       </div>
-      <button class="submit-btn" onclick="generatePos()">Genereer</button>
-    </div>
-
-    <div class="form-panel" id="poAddForm">
-      <div class="form-grid">
-        <div class="field"><label>Bedrag (€)</label><input id="add_amount" value="50" /></div>
-        <div class="field"><label>BIC ontvanger (BB)</label><input id="add_bb_id" value="GKCCBEBB" /></div>
-        <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
-        <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
-        <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
+      <div class="card">
+        <div class="card-title">Teamleden</div>
+        <div class="member-tags" id="memberTags"></div>
       </div>
-      <button class="submit-btn" onclick="addPo()">Toevoegen</button>
+      <div class="card">
+        <div class="card-title">Connectiviteit</div>
+        <div id="cbStatus" style="color:var(--muted)">Controleren...</div>
+      </div>
     </div>
-  </div>
 
-  <!-- CB POLLING / BB FLOW -->
-  <div class="section">
-    <div class="section-title">CB Polling — BB flow</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/cb/poll_po','Inkomende POs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen inkomende POs</div>
-        <div class="btn-endpoint">/api/cb/poll_po</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/cb/poll_ack','ACKs ophalen')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Ophalen ACKs</div>
-        <div class="btn-endpoint">/api/cb/poll_ack</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_in','ACK-in bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-in</div>
-        <div class="btn-endpoint">/api/ack_in</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/ack_out','ACK-out bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bekijk ACK-out</div>
-        <div class="btn-endpoint">/api/ack_out</div>
-      </button>
+    <!-- SECTIE 2: REKENINGEN -->
+    <div class="tab-section" id="sec-accounts">
+      <div class="stats-row" id="accountStats">
+        <div class="stat-card"><div class="stat-label">Rekeningen</div><div class="stat-value blue" id="statCount">-</div></div>
+        <div class="stat-card"><div class="stat-label">Totaal saldo</div><div class="stat-value green" id="statTotal">-</div></div>
+        <div class="stat-card"><div class="stat-label">Gemiddeld</div><div class="stat-value gold" id="statAvg">-</div></div>
+        <div class="stat-card"><div class="stat-label">Rekeningen < €100</div><div class="stat-value red" id="statLow">-</div></div>
+      </div>
+      <div class="card">
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="loadAccounts()">↻ Vernieuwen</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tblAccounts">
+            <thead><tr><th>IBAN</th><th style="text-align:right">Saldo (€)</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="3" class="empty-state">Klik op Vernieuwen</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- DATA & LOGS -->
-  <div class="section">
-    <div class="section-title">Data & logs</div>
-    <div class="grid">
-      <button class="btn" onclick="api('GET','/api/transactions','Transacties bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Transacties</div>
-        <div class="btn-endpoint">/api/transactions</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/logs','Logs bekijken')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Logs</div>
-        <div class="btn-endpoint">/api/logs</div>
-      </button>
-      <button class="btn" onclick="api('GET','/api/info','Bank info')">
-        <div class="btn-method get">GET</div>
-        <div class="btn-name">Bank info</div>
-        <div class="btn-endpoint">/api/info</div>
-      </button>
+    <!-- SECTIE 3: BETALEN (OB) -->
+    <div class="tab-section" id="sec-ob">
+      <div class="card">
+        <div class="card-title">Nieuwe betaling aanmaken</div>
+        <div class="form-grid">
+          <div class="field"><label>Bedrag (€)</label><input id="f_amount" type="number" value="50" min="0.01" max="500" step="0.01"/></div>
+          <div class="field"><label>IBAN betaler (OA)</label><input id="f_oa" value="BE68539007547034"/></div>
+          <div class="field"><label>BIC ontvanger bank (BB)</label><input id="f_bb" value="GKCCBEBB"/></div>
+          <div class="field"><label>IBAN ontvanger (BA)</label><input id="f_ba" value="BE71096123456789"/></div>
+          <div class="field"><label>Bericht</label><input id="f_msg" value="Testbetaling PingFin"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addPo()">📤 PO toevoegen aan wachtrij</button>
+          <button class="btn" onclick="toggleGenForm()">⚙ Genereer willekeurige POs</button>
+        </div>
+        <div id="genForm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;">
+          <div class="form-grid">
+            <div class="field"><label>Aantal</label><input id="g_count" value="3" type="number" min="1" max="20"/></div>
+            <div class="field"><label>Min (€)</label><input id="g_min" value="1" type="number"/></div>
+            <div class="field"><label>Max (€)</label><input id="g_max" value="200" type="number"/></div>
+          </div>
+          <button class="btn btn-primary" onclick="generatePos()">Genereer</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">PO Wachtrij (PO_NEW)</div>
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="processPo()">▶ Verwerk alle POs naar CB</button>
+          <button class="btn btn-sm" onclick="loadPoNew()">↻</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tblPoNew">
+            <thead><tr><th>PO ID</th><th>Bedrag</th><th>Van (OA)</th><th>Naar bank</th><th>Naar (BA)</th><th>Bericht</th><th>Aangemaakt</th></tr></thead>
+            <tbody><tr><td colspan="7" class="empty-state">Geen POs in wachtrij</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Verstuurde POs (PO_OUT)</div>
+        <div class="btn-row"><button class="btn btn-sm" onclick="loadPoOut()">↻ Vernieuwen</button></div>
+        <div class="tbl-wrap">
+          <table id="tblPoOut">
+            <thead><tr><th>PO ID</th><th>Bedrag</th><th>Van</th><th>Naar bank</th><th>OB Code</th><th>CB Code</th><th>BB Code</th><th>Datum</th></tr></thead>
+            <tbody><tr><td colspan="8" class="empty-state">Geen verstuurd</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- RESPONSE -->
-  <div class="response-panel" id="responsePanel">
-    <div class="response-header">
-      <span class="response-title" id="responseTitle">Response</span>
-      <span id="responseStatus"></span>
+    <!-- SECTIE 4: ONTVANGEN (BB) -->
+    <div class="tab-section" id="sec-bb">
+      <div class="card">
+        <div class="card-title">POs ophalen van CB</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="pollPo()">📥 Haal POs op van CB</button>
+          <button class="btn btn-sm" onclick="loadPoIn()">↻ Vernieuwen lijst</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:12px">
+          Haalt openstaande POs op van de Clearing Bank via GET /api/v2/po_out en verwerkt ze.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">Ontvangen POs (PO_IN)</div>
+        <div class="tbl-wrap">
+          <table id="tblPoIn">
+            <thead><tr><th>PO ID</th><th>Bedrag</th><th>Van bank</th><th>Van (OA)</th><th>Naar (BA)</th><th>BB Code</th><th>Datum</th></tr></thead>
+            <tbody><tr><td colspan="7" class="empty-state">Geen ontvangen POs</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <div class="response-body" id="responseBody">Laden...</div>
-  </div>
 
-</main>
+    <!-- SECTIE 5: ACKs -->
+    <div class="tab-section" id="sec-acks">
+      <div class="card">
+        <div class="card-title">ACK acties</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="pollAck()">📬 Haal ACKs op van CB (poll_ack)</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted)">Haalt ACKs op voor jouw verstuurde POs via GET /api/v2/ack_out.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Ontvangen ACKs (ACK_IN) — bevestigingen voor jouw betalingen</div>
+        <div class="btn-row"><button class="btn btn-sm" onclick="loadAckIn()">↻</button></div>
+        <div class="tbl-wrap">
+          <table id="tblAckIn">
+            <thead><tr><th>PO ID</th><th>Bedrag</th><th>OB Code</th><th>CB Code</th><th>BB Code</th><th>BB Datum</th></tr></thead>
+            <tbody><tr><td colspan="6" class="empty-state">Geen ACKs ontvangen</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Verstuurde ACKs (ACK_OUT) — bevestigingen voor ontvangen POs</div>
+        <div class="btn-row"><button class="btn btn-sm" onclick="loadAckOut()">↻</button></div>
+        <div class="tbl-wrap">
+          <table id="tblAckOut">
+            <thead><tr><th>PO ID</th><th>Bedrag</th><th>Van bank</th><th>BB Code</th><th>BB Datum</th></tr></thead>
+            <tbody><tr><td colspan="5" class="empty-state">Geen ACKs verstuurd</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTIE 6: TRANSACTIES -->
+    <div class="tab-section" id="sec-tx">
+      <div class="card">
+        <div class="card-title">Transacties</div>
+        <div class="btn-row"><button class="btn btn-success" onclick="loadTx()">↻ Vernieuwen</button></div>
+        <div class="tbl-wrap">
+          <table id="tblTx">
+            <thead><tr><th>TX ID</th><th>Bedrag</th><th>Account</th><th>PO ID</th><th>Geldig</th><th>Voltooid</th><th>Datum</th></tr></thead>
+            <tbody><tr><td colspan="7" class="empty-state">Geen transacties</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTIE 7: LOGS -->
+    <div class="tab-section" id="sec-logs">
+      <div class="card">
+        <div class="card-title">Event Log</div>
+        <div class="btn-row"><button class="btn btn-sm" onclick="loadLogs()">↻ Vernieuwen</button></div>
+        <div class="tbl-wrap">
+          <table id="tblLogs">
+            <thead><tr><th>Datum/tijd</th><th>Type</th><th>Bericht</th><th>PO ID</th></tr></thead>
+            <tbody><tr><td colspan="4" class="empty-state">Geen logs</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="toast"></div>
 
 <script>
-  // Set header info from server
-  document.getElementById('serverUrl').textContent = window.location.host;
-  fetch('/api/info').then(r => r.json()).then(j => {
-    if (j.data) document.getElementById('headerTitle').textContent =
-      `${j.data.name || j.data.bic} — ADMIN PANEL`;
-  }).catch(() => {});
+const fmt = n => parseFloat(n||0).toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dt  = s => s ? s.replace('T',' ').slice(0,16) : '-';
 
-  function toggleForm(id) {
-    const el = document.getElementById(id);
-    el.style.display = el.style.display === 'block' ? 'none' : 'block';
-  }
+function codeBadge(c) {
+  if (!c) return '<span class="badge badge-pending">–</span>';
+  const s = String(c);
+  if (s==='2000') return `<span class="badge badge-ok">✓ ${s}</span>`;
+  if (s.startsWith('4')||s.startsWith('5')||s==='INSUF'||s==='INSUFFICIENT_FUNDS')
+    return `<span class="badge badge-err">✗ ${s}</span>`;
+  return `<span class="badge badge-pending">${s}</span>`;
+}
+function typeBadge(t) {
+  const colors = {
+    po_out:'badge-ok', po_in:'badge-info', po_rejected:'badge-err',
+    po_internal:'badge-ok', ack_in:'badge-ok', ack_out:'badge-info',
+    ACK_IN:'badge-ok', PO_IN:'badge-info'
+  };
+  return `<span class="badge ${colors[t]||'badge-pending'}">${t||'-'}</span>`;
+}
 
-  function showResponse(title, status, body, html) {
-    const panel = document.getElementById('responsePanel');
-    panel.style.display = 'block';
-    document.getElementById('responseTitle').textContent = title;
-    const st = document.getElementById('responseStatus');
-    st.textContent = 'STATUS ' + status;
-    st.className = String(status).startsWith('2') ? 'status-ok' : 'status-err';
-    const bodyEl = document.getElementById('responseBody');
-    if (html) {
-      bodyEl.style.whiteSpace = 'normal';
-      bodyEl.innerHTML = html;
-    } else {
-      bodyEl.style.whiteSpace = 'pre-wrap';
-      let display = body;
-      try { display = JSON.stringify(JSON.parse(body), null, 2); } catch(e) {}
-      bodyEl.textContent = display;
-    }
-    panel.scrollIntoView({ behavior: 'smooth' });
-  }
+let currentTab = 'info';
+const titles = {info:'Bank Info',accounts:'Rekeningen',ob:'Betalen (OB)',bb:'Ontvangen (BB)',acks:'ACKs',tx:'Transacties',logs:'Logs'};
 
-  async function api(method, url, title) {
-    showResponse(title, '...', 'Bezig...');
-    try {
-      const res  = await fetch(url, { method });
-      const text = await res.text();
-      showResponse(title, res.status, text);
-    } catch(e) {
-      showResponse(title, 'ERROR', e.message);
-    }
-  }
+function show(tab) {
+  document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('sec-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('topTitle').textContent = titles[tab];
+  currentTab = tab;
+  refreshCurrent();
+}
 
-  async function loadAccounts() {
-    showResponse('Accounts ophalen', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/accounts');
-      const json = await res.json();
-      const data = json.data;
-      const total = data.reduce((s, a) => s + parseFloat(a.balance), 0);
-      const rows = data.map(a => `
-        <tr>
-          <td style="font-family:'Courier New',monospace;font-size:11px">${a.id}</td>
-          <td style="color:${parseFloat(a.balance) > 0 ? '#68d391' : '#fc8181'};font-weight:bold;text-align:right">
-            €${parseFloat(a.balance).toLocaleString('nl-BE', {minimumFractionDigits:2})}
-          </td>
-        </tr>`).join('');
-      const html = `
-        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px">
-          <span style="color:#718096">${data.length} rekeningen</span>
-          <span style="color:#48bb78">Totaal: €${total.toLocaleString('nl-BE', {minimumFractionDigits:2})}</span>
-        </div>
-        <table class="accounts-table">
-          <thead><tr><th>IBAN</th><th style="text-align:right">Saldo</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      showResponse('Accounts ophalen', res.status, null, html);
-    } catch(e) {
-      showResponse('Accounts ophalen', 'ERROR', e.message);
-    }
-  }
+function refreshCurrent() {
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('nl-BE');
+  const map = {info:loadInfo, accounts:loadAccounts, ob:()=>{loadPoNew();loadPoOut();}, bb:loadPoIn, acks:()=>{loadAckIn();loadAckOut();}, tx:loadTx, logs:loadLogs};
+  if (map[currentTab]) map[currentTab]();
+}
 
-  async function generatePos() {
-    const count = document.getElementById('gen_count').value;
-    const min   = document.getElementById('gen_min').value;
-    const max   = document.getElementById('gen_max').value;
-    await api('GET', `/api/po_new_generate?count=${count}&min=${min}&max=${max}`, 'POs genereren');
-  }
+function toast(msg, ok=true) {
+  const d = document.createElement('div');
+  d.className = `toast-item ${ok?'toast-ok':'toast-err'}`;
+  d.textContent = msg;
+  document.getElementById('toast').appendChild(d);
+  setTimeout(()=>d.remove(), 3500);
+}
 
-  async function loadHelp() {
-    showResponse('API Help', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/help');
-      const json = await res.json();
-      const rows = json.data.map(e => `
-        <tr>
-          <td style="color:${e.method==='GET'?'#48bb78':'#f6ad55'};font-weight:bold;font-size:10px;letter-spacing:.08em">${e.method}</td>
-          <td style="font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0">${e.path}</td>
-          <td style="font-size:11px;color:#a0aec0">${e.desc}</td>
-          <td style="font-size:10px;color:${e.auth?'#fc8181':'#68d391'};text-align:center">${e.auth?'Ja':'Nee'}</td>
-        </tr>`).join('');
-      const html = `
-        <div style="margin-bottom:10px;font-size:11px;color:#718096">${json.message}</div>
-        <table class="accounts-table">
-          <thead><tr><th>Methode</th><th>Endpoint</th><th>Beschrijving</th><th style="text-align:center">Auth</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      showResponse('API Help', res.status, null, html);
-    } catch(e) {
-      showResponse('API Help', 'ERROR', e.message);
-    }
-  }
+async function apiCall(method, url, body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}};
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  const j = await r.json();
+  return {ok: r.ok, status: r.status, data: j};
+}
 
-  async function addPo() {
-    const body = { data: [{
-      po_amount: parseFloat(document.getElementById('add_amount').value),
-      po_message: document.getElementById('add_message').value,
-      bb_id:  document.getElementById('add_bb_id').value,
-      oa_id:  document.getElementById('add_oa_id').value,
-      ba_id:  document.getElementById('add_ba_id').value,
-    }]};
-    showResponse('POST /api/po_new_add', '...', 'Bezig...');
-    try {
-      const res  = await fetch('/api/po_new_add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const text = await res.text();
-      showResponse('POST /api/po_new_add', res.status, text);
-    } catch(e) {
-      showResponse('POST /api/po_new_add', 'ERROR', e.message);
-    }
-  }
+// === BANK INFO ===
+async function loadInfo() {
+  const r = await apiCall('GET', '/api/info');
+  if (!r.ok) return;
+  const d = r.data.data || r.data;
+  document.getElementById('bankName').textContent = `${d.bic || ''} – ${d.name || ''}`;
+  document.getElementById('infoGrid').innerHTML = `
+    <div class="info-item"><label>Bank naam</label><span>${d.name||'-'}</span></div>
+    <div class="info-item"><label>BIC</label><span class="mono">${d.bic||'-'}</span></div>
+    <div class="info-item"><label>CB URL</label><span class="mono" style="font-size:10px">${d.cb_url||'-'}</span></div>
+  `;
+  const members = d.members || [];
+  document.getElementById('memberTags').innerHTML = members.map(m=>`<span class="member-tag">${m}</span>`).join('') || '<span style="color:var(--muted)">Geen teamleden ingesteld</span>';
+
+  // CB ping
+  document.getElementById('cbStatus').textContent = 'Controleren...';
+  try {
+    const tr = await apiCall('GET', '/api/token');
+    document.getElementById('cbStatus').innerHTML = tr.ok
+      ? '<span style="color:var(--green)">✓ Clearing Bank bereikbaar</span>'
+      : '<span style="color:var(--red)">✗ CB fout: token ophalen mislukt</span>';
+  } catch { document.getElementById('cbStatus').innerHTML = '<span style="color:var(--red)">✗ CB niet bereikbaar</span>'; }
+}
+
+// === REKENINGEN ===
+async function loadAccounts() {
+  const r = await apiCall('GET', '/api/accounts');
+  if (!r.ok) return toast('Fout bij ophalen rekeningen', false);
+  const data = r.data.data || [];
+  document.getElementById('statCount').textContent = data.length;
+  const total = data.reduce((s,a)=>s+parseFloat(a.balance||0),0);
+  document.getElementById('statTotal').textContent = '€'+fmt(total);
+  document.getElementById('statAvg').textContent = data.length ? '€'+fmt(total/data.length) : '-';
+  document.getElementById('statLow').textContent = data.filter(a=>parseFloat(a.balance)<100).length;
+  const tbody = document.querySelector('#tblAccounts tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="3" class="empty-state">Geen rekeningen</td></tr>';return;}
+  tbody.innerHTML = data.map(a => {
+    const bal = parseFloat(a.balance||0);
+    const badge = bal<=0 ? 'badge-err' : bal<100 ? 'badge-pending' : 'badge-ok';
+    const label = bal<=0 ? 'Leeg' : bal<100 ? 'Laag' : 'OK';
+    return `<tr>
+      <td class="mono">${a.id}</td>
+      <td style="text-align:right;font-weight:600;color:${bal<=0?'var(--red)':bal<100?'var(--orange)':'var(--green)'}">€${fmt(a.balance)}</td>
+      <td><span class="badge ${badge}">${label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// === OB FLOW ===
+async function addPo() {
+  const body = {data:[{
+    po_amount: parseFloat(document.getElementById('f_amount').value),
+    po_message: document.getElementById('f_msg').value,
+    oa_id: document.getElementById('f_oa').value.trim(),
+    bb_id: document.getElementById('f_bb').value.trim(),
+    ba_id: document.getElementById('f_ba').value.trim(),
+  }]};
+  const r = await apiCall('POST','/api/po_new_add',body);
+  if (r.ok) { toast('PO toegevoegd aan wachtrij'); loadPoNew(); }
+  else toast(`Fout: ${r.data.message||r.status}`, false);
+}
+
+function toggleGenForm() {
+  const el = document.getElementById('genForm');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+async function generatePos() {
+  const r = await apiCall('GET',`/api/po_new_generate?count=${document.getElementById('g_count').value}&min=${document.getElementById('g_min').value}&max=${document.getElementById('g_max').value}`);
+  if (r.ok) { toast(`${(r.data.data||[]).length} willekeurige POs gegenereerd`); loadPoNew(); }
+  else toast('Genereer mislukt', false);
+}
+
+async function processPo() {
+  const r = await apiCall('GET','/api/po_new_process');
+  if (r.ok) {
+    const d = r.data.data || {};
+    toast(`Verwerkt: ${d.external||0} extern, ${d.internal||0} intern, ${d.rejected||0} geweigerd`);
+    loadPoNew(); loadPoOut(); loadAccounts();
+  } else toast(`Verwerking mislukt: ${r.data.message||r.status}`, false);
+}
+
+async function loadPoNew() {
+  const r = await apiCall('GET','/api/po_new');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblPoNew tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Wachtrij leeg</td></tr>';return;}
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td class="mono" style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${p.po_id}">${p.po_id?.slice(0,24)}…</td>
+    <td style="color:var(--accent);font-weight:600">€${fmt(p.po_amount)}</td>
+    <td class="mono">${p.oa_id||'-'}</td>
+    <td><span class="badge badge-info">${p.bb_id||'-'}</span></td>
+    <td class="mono">${p.ba_id||'-'}</td>
+    <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis">${p.po_message||'-'}</td>
+    <td>${dt(p.po_datetime)}</td>
+  </tr>`).join('');
+}
+
+async function loadPoOut() {
+  const r = await apiCall('GET','/api/po_out');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblPoOut tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="8" class="empty-state">Nog niets verstuurd</td></tr>';return;}
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td class="mono" title="${p.po_id}">${p.po_id?.slice(0,20)}…</td>
+    <td style="font-weight:600">€${fmt(p.po_amount)}</td>
+    <td class="mono">${p.oa_id?.slice(-8)||'-'}</td>
+    <td>${p.bb_id||'-'}</td>
+    <td>${codeBadge(p.ob_code)}</td>
+    <td>${codeBadge(p.cb_code)}</td>
+    <td>${codeBadge(p.bb_code)}</td>
+    <td>${dt(p.po_datetime)}</td>
+  </tr>`).join('');
+}
+
+// === BB FLOW ===
+async function pollPo() {
+  const r = await apiCall('GET','/api/cb/poll_po');
+  if (r.ok) {
+    const d = r.data.data || [];
+    toast(`${d.length} PO(s) opgehaald van CB`);
+    loadPoIn(); loadAccounts();
+  } else toast(`Poll mislukt: ${r.data.message||r.status}`, false);
+}
+
+async function loadPoIn() {
+  const r = await apiCall('GET','/api/po_in');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblPoIn tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Geen inkomende POs</td></tr>';return;}
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td class="mono" title="${p.po_id}">${p.po_id?.slice(0,20)}…</td>
+    <td style="color:var(--green);font-weight:600">+€${fmt(p.po_amount)}</td>
+    <td><span class="badge badge-info">${p.ob_id||'-'}</span></td>
+    <td class="mono">${p.oa_id?.slice(-8)||'-'}</td>
+    <td class="mono">${p.ba_id||'-'}</td>
+    <td>${codeBadge(p.bb_code)}</td>
+    <td>${dt(p.po_datetime)}</td>
+  </tr>`).join('');
+}
+
+// === ACKs ===
+async function pollAck() {
+  const r = await apiCall('GET','/api/cb/poll_ack');
+  if (r.ok) { toast(`${(r.data.data||[]).length} ACK(s) ontvangen van CB`); loadAckIn(); loadAccounts(); }
+  else toast(`ACK poll mislukt: ${r.data.message||r.status}`, false);
+}
+
+async function loadAckIn() {
+  const r = await apiCall('GET','/api/ack_in');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblAckIn tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Geen ACKs ontvangen</td></tr>';return;}
+  tbody.innerHTML = data.map(a=>`<tr>
+    <td class="mono" title="${a.po_id}">${a.po_id?.slice(0,20)}…</td>
+    <td>€${fmt(a.po_amount)}</td>
+    <td>${codeBadge(a.ob_code)}</td>
+    <td>${codeBadge(a.cb_code)}</td>
+    <td>${codeBadge(a.bb_code)}</td>
+    <td>${dt(a.bb_datetime)}</td>
+  </tr>`).join('');
+}
+
+async function loadAckOut() {
+  const r = await apiCall('GET','/api/ack_out');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblAckOut tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="5" class="empty-state">Geen ACKs verstuurd</td></tr>';return;}
+  tbody.innerHTML = data.map(a=>`<tr>
+    <td class="mono" title="${a.po_id}">${a.po_id?.slice(0,20)}…</td>
+    <td>€${fmt(a.po_amount)}</td>
+    <td>${a.ob_id||'-'}</td>
+    <td>${codeBadge(a.bb_code)}</td>
+    <td>${dt(a.bb_datetime)}</td>
+  </tr>`).join('');
+}
+
+// === TRANSACTIES ===
+async function loadTx() {
+  const r = await apiCall('GET','/api/transactions');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblTx tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Geen transacties</td></tr>';return;}
+  tbody.innerHTML = data.map(t=>{
+    const amt = parseFloat(t.amount||0);
+    return `<tr>
+      <td class="mono" style="font-size:10px">${(t.id||'-').slice(0,20)}</td>
+      <td style="font-weight:600;color:${amt>=0?'var(--green)':'var(--red)'}">
+        ${amt>=0?'+':''}€${fmt(Math.abs(amt))}</td>
+      <td class="mono">${(t.account_id||'-').slice(-8)}</td>
+      <td class="mono" style="font-size:10px">${(t.po_id||'-').slice(0,18)}</td>
+      <td>${t.isvalid==1?'<span class="badge badge-ok">✓</span>':'<span class="badge badge-err">✗</span>'}</td>
+      <td>${t.iscomplete==1?'<span class="badge badge-ok">✓</span>':'<span class="badge badge-pending">⏳</span>'}</td>
+      <td>${dt(t.datetime)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// === LOGS ===
+async function loadLogs() {
+  const r = await apiCall('GET','/api/logs');
+  const data = r.data?.data || [];
+  const tbody = document.querySelector('#tblLogs tbody');
+  if (!data.length){tbody.innerHTML='<tr><td colspan="4" class="empty-state">Geen logs</td></tr>';return;}
+  tbody.innerHTML = data.map(l=>`<tr>
+    <td style="white-space:nowrap">${dt(l.datetime)}</td>
+    <td>${typeBadge(l.type)}</td>
+    <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;color:var(--text)">${l.message||'-'}</td>
+    <td class="mono" style="font-size:10px">${(l.po_id||'-').slice(0,18)}</td>
+  </tr>`).join('');
+}
+
+// Init
+loadInfo();
+setInterval(refreshCurrent, 30000);
 </script>
-
 </body>
 </html>
