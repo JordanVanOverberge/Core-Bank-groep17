@@ -3,6 +3,7 @@ const router         = express.Router();
 const pool           = require('../db');
 const { getCBToken } = require('../services/cbToken');
 const auth           = require('../middleware/auth');
+const notifs         = require('../notifications');
 
 const ok   = (res, data, msg = 'OK', status = 200) =>
   res.status(status).json({ ok: true,  status, code: 2000,          message: msg, data });
@@ -83,8 +84,10 @@ router.get('/po_new_generate', async (req, res) => {
       generated.push({ po_id, po_amount: amount, bb_id, ba_id });
     }
 
+    notifs.push('success', `${count} willekeurige PO('s) gegenereerd`);
     ok(res, generated, `${count} willekeurige PO('s) gegenereerd`);
   } catch (err) {
+    notifs.push('error', `Fout bij PO genereren: ${err.message}`);
     fail(res, err.message);
   }
 });
@@ -104,8 +107,10 @@ router.post('/po_new_add', async (req, res) => {
          process.env.BIC, po.oa_id, po.bb_id, po.ba_id]
       );
     }
+    notifs.push('info', `${pos.length} PO('s) toegevoegd aan po_new`);
     ok(res, [], `${pos.length} PO('s) toegevoegd aan po_new`);
   } catch (err) {
+    notifs.push('error', `Fout bij PO toevoegen: ${err.message}`);
     fail(res, err.message);
   }
 });
@@ -285,6 +290,13 @@ router.get('/po_new_process', async (_req, res) => {
       }
     }
 
+    if (rejected.length > 0)
+      notifs.push('warning', `${rejected.length} PO('s) geweigerd bij verwerking`);
+    if (internal.length > 0)
+      notifs.push('success', `${internal.length} interne betaling(en) verwerkt`);
+    if (external.length > 0)
+      notifs.push('success', `${external.length} externe PO('s) verstuurd naar CB`);
+
     ok(res, {
       internal: internal.length,
       internal_details: internal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
@@ -295,6 +307,7 @@ router.get('/po_new_process', async (_req, res) => {
     }, `Verwerkt: ${internal.length} intern, ${external.length} extern, ${rejected.length} geweigerd`);
 
   } catch (err) {
+    notifs.push('error', `Fout bij PO verwerken: ${err.message}`);
     fail(res, err.message);
   }
 });

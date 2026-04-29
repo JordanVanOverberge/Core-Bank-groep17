@@ -4,6 +4,7 @@ const express        = require('express');
 const router         = express.Router();
 const pool           = require('../db');
 const { getCBToken } = require('../services/cbToken');
+const notifs         = require('../notifications');
 
 const ok   = (res, data, msg = 'OK', status = 200) =>
   res.status(status).json({ ok: true,  status, code: 2000,          message: msg, data });
@@ -113,6 +114,7 @@ router.get('/cb/poll_po', async (_req, res) => {
     });
   } catch (_) { /* ACK sturen mislukt – lokaal al opgeslagen */ }
 
+  notifs.push('info', `${incomingPos.length} PO('s) opgehaald van CB via poll`);
   ok(res, acks, `${incomingPos.length} PO('s) ontvangen van CB en verwerkt`);
 });
 
@@ -178,6 +180,10 @@ router.get('/cb/poll_ack', async (_req, res) => {
     } catch (_) {}
   }
 
+  const successAcks = incomingAcks.filter(a => String(a.bb_code) === '2000').length;
+  const failedAcks  = incomingAcks.length - successAcks;
+  if (successAcks > 0) notifs.push('success', `${successAcks} ACK(s) goedgekeurd door CB`);
+  if (failedAcks  > 0) notifs.push('error',   `${failedAcks} ACK(s) geweigerd door CB`);
   ok(res, incomingAcks, `${incomingAcks.length} ACK('s) ontvangen van CB`);
 });
 

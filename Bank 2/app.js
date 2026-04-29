@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const pool    = require('./db');
+const notifs  = require('./notifications');
 
 const app = express();
 app.use(express.json());
@@ -12,6 +13,14 @@ app.use('/api', require('./routes/po'));
 app.use('/api', require('./routes/po_in'));
 app.use('/api', require('./routes/cb_poll'));
 app.use('/api', require('./routes/data'));
+
+app.get('/api/notifications', (_req, res) => {
+  res.json({ ok: true, data: notifs.getAll(), unread: notifs.unreadCount() });
+});
+app.post('/api/notifications/read', (_req, res) => {
+  notifs.markRead();
+  res.json({ ok: true });
+});
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};

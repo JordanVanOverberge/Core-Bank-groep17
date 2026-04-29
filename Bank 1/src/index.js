@@ -4,6 +4,7 @@ const path    = require('path');
 const { initDb, pool } = require('./db');
 const poRoutes = require('./routes/po');
 const cb = require('./middleware/cbApi');
+const notifs = require('./notifications');
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,14 @@ const fail = (res, code, msg, status = 500) =>
   res.status(status).json({ ok: false, status, code, message: msg, data: null });
 
 app.use('/api', poRoutes);
+
+app.get('/api/notifications', (_req, res) => {
+  res.json({ ok: true, data: notifs.getAll(), unread: notifs.unreadCount() });
+});
+app.post('/api/notifications/read', (_req, res) => {
+  notifs.markRead();
+  res.json({ ok: true });
+});
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};

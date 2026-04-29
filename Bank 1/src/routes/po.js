@@ -1,8 +1,9 @@
 const express = require('express');
 const router  = express.Router();
 const { pool } = require('../db');
-const cb   = require('../middleware/cbApi');
-const auth = require('../middleware/auth');
+const cb     = require('../middleware/cbApi');
+const auth   = require('../middleware/auth');
+const notifs = require('../notifications');
 
 const BIC   = () => process.env.BANK_BIC;
 const now   = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -77,8 +78,10 @@ router.get('/po_new_generate', async (req, res) => {
       generated.push({ po_id, po_amount: amount, bb_id, ba_id });
     }
 
+    notifs.push('success', `${count} willekeurige PO('s) gegenereerd`);
     return ok(res, generated, `${count} willekeurige PO('s) gegenereerd`);
   } catch (err) {
+    notifs.push('error', `Fout bij PO genereren: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
@@ -97,8 +100,10 @@ router.post('/po_new_add', async (req, res) => {
         [po.po_id ?? genId(), po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
       );
     }
+    notifs.push('info', `${pos.length} PO('s) toegevoegd aan po_new`);
     return ok(res, [], `${pos.length} PO('s) toegevoegd aan po_new`);
   } catch (err) {
+    notifs.push('error', `Fout bij PO toevoegen: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
@@ -207,6 +212,13 @@ router.get('/po_new_process', async (_req, res) => {
       }
     }
 
+    if (rejected.length > 0)
+      notifs.push('warning', `${rejected.length} PO('s) geweigerd bij verwerking`);
+    if (internal.length > 0)
+      notifs.push('success', `${internal.length} interne betaling(en) verwerkt`);
+    if (external.length > 0)
+      notifs.push('success', `${external.length} externe PO('s) verstuurd naar CB`);
+
     return ok(res, {
       internal: internal.length,
       internal_details: internal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
@@ -216,6 +228,7 @@ router.get('/po_new_process', async (_req, res) => {
       cb_response: cbResult,
     }, `Verwerkt: ${internal.length} intern, ${external.length} extern, ${rejected.length} geweigerd`);
   } catch (err) {
+    notifs.push('error', `Fout bij PO verwerken: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
@@ -274,10 +287,14 @@ router.get('/cb/poll_po', async (_req, res) => {
       acks.push(ack);
     }
 
-    if (acks.length > 0) await cb.sendAckIn(acks);
+    if (acks.length > 0) {
+      await cb.sendAckIn(acks);
+      notifs.push('info', `${acks.length} PO('s) ontvangen van CB via poll`);
+    }
 
     return ok(res, acks, `${pos.length} inkomende PO('s) verwerkt`);
   } catch (err) {
+    notifs.push('error', `Fout bij CB poll PO: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });
@@ -315,8 +332,13 @@ router.get('/cb/poll_ack', async (_req, res) => {
       await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
         [ts, 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
     }
+    const successAcks = acks.filter(a => String(a.bb_code) === '2000').length;
+    const failedAcks  = acks.length - successAcks;
+    if (successAcks > 0) notifs.push('success', `${successAcks} ACK(s) goedgekeurd door CB`);
+    if (failedAcks  > 0) notifs.push('error',   `${failedAcks} ACK(s) geweigerd door CB`);
     return ok(res, acks, `${acks.length} ACK('s) ontvangen`);
   } catch (err) {
+    notifs.push('error', `Fout bij CB poll ACK: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
 });

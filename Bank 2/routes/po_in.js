@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const pool    = require('../db');
 const auth    = require('../middleware/auth');
+const notifs  = require('../notifications');
 
 const ok   = (res, data, msg = 'OK', status = 200) =>
   res.status(status).json({ ok: true,  status, code: 2000,          message: msg, data });
@@ -114,8 +115,11 @@ router.post('/po_in', auth, async (req, res) => {
       acks.push(ack);
     }
 
+    if (acks.length > 0)
+      notifs.push('info', `${acks.length} PO('s) ontvangen van CB`);
     ok(res, acks, `${pos.length} PO('s) ontvangen en verwerkt`);
   } catch (err) {
+    notifs.push('error', `Fout bij verwerken inkomende PO: ${err.message}`);
     fail(res, err.message);
   }
 });
