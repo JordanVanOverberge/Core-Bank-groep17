@@ -394,6 +394,13 @@
         </svg>
         Bank info
       </div>
+      <div class="sb-item" onclick="nav('banks',this)">
+        <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Netwerk Banken
+      </div>
       <div class="sb-item" onclick="nav('auth',this)">
         <svg class="sb-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -669,6 +676,24 @@
 
         </div>
       </div><!-- end docs section -->
+
+      <!-- ─── NETWERK BANKEN ─── -->
+      <div class="section" id="s-banks" style="flex-direction:column;">
+        <div class="page-wrap">
+          <div class="page-title">Netwerk Banken</div>
+          <div class="page-sub">GET /api/banks — Alle deelnemende banken in het PingFin netwerk (via CB)</div>
+          <button class="btn-primary" onclick="loadBanks()">Laad Banken</button>
+          <div class="resp-hidden" id="rw-banks">
+            <div class="resp-card">
+              <div class="resp-card-head">
+                <span class="resp-card-title">Netwerk Banken</span>
+                <span class="resp-status ok" id="rs-banks">200 OK</span>
+              </div>
+              <div class="resp-body" id="rb-banks"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ─── BANK INFO ─── -->
       <div class="section" id="s-info" style="flex-direction:column;">
@@ -950,7 +975,9 @@ const EP_GROUPS = [
       { method:'GET',  path:'/api/help',    desc:'Overzicht van alle beschikbare endpoints', auth:false,
         resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "endpoints": 12,\n    "get": 9,\n    "post": 3\n  }\n}' },
       { method:'GET',  path:'/api/info',    desc:'Bank info: BIC, naam, teamleden', auth:false,
-        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "bic": "GKCCBEBB",\n    "name": "PingFin"\n  }\n}' }
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": {\n    "bic": "GKCCBEBB",\n    "name": "PingFin"\n  }\n}' },
+      { method:'GET',  path:'/api/banks',   desc:'Lijst van alle banken op het netwerk (via CB)', auth:false,
+        resp:'{\n  "ok": true,\n  "status": 200,\n  "data": [\n    {\n      "id": "ARSPBE22",\n      "name": "Argenta Belgium",\n      "members": "..."\n    }\n  ]\n}' }
     ]
   },
   {
@@ -1148,6 +1175,29 @@ async function simpleGet(url, key) {
   } catch(e) {
     showResp(key, 'Error', e.message, false);
   }
+}
+
+async function loadBanks() {
+  try {
+    const res  = await fetch('/api/banks');
+    const json = await res.json();
+    const data = json.data || [];
+    const rows = data.map(b =>
+      `<tr>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${b.id ?? b.bic ?? '—'}</td>
+        <td style="font-weight:600">${b.name ?? '—'}</td>
+        <td style="color:var(--text2);font-size:12px">${b.members ?? '—'}</td>
+      </tr>`
+    ).join('');
+    document.getElementById('rw-banks').classList.remove('resp-hidden');
+    document.getElementById('rs-banks').textContent = '200 OK';
+    document.getElementById('rb-banks').innerHTML =
+      `<div style="padding:0 0 10px;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase">${data.length} bank(en) op het netwerk</div>` +
+      `<table class="data-table">
+        <thead><tr><th>BIC</th><th>Naam</th><th>Leden</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) { showResp('banks', 'Error', e.message, false); }
 }
 
 async function loadInfo() {

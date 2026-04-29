@@ -44,7 +44,7 @@ router.get('/po_new_generate', async (req, res) => {
     let externalBanks = [];
     try {
       const data = await cb.fetchBanks();
-      externalBanks = (data.data || []).filter(b => b.bic !== BIC());
+      externalBanks = (data.data || []).filter(b => (b.id ?? b.bic) !== BIC());
     } catch (_) {}
 
     const generated = [];
@@ -56,7 +56,7 @@ router.get('/po_new_generate', async (req, res) => {
       let bb_id, ba_id;
       if (externalBanks.length > 0 && Math.random() > 0.3) {
         const bank = externalBanks[Math.floor(Math.random() * externalBanks.length)];
-        bb_id = bank.bic;
+        bb_id = bank.id ?? bank.bic;
         ba_id = bank.iban ?? `BE${String(Math.floor(Math.random() * 1e14)).padStart(14, '0')}`;
       } else {
         const dest = accounts[Math.floor(Math.random() * accounts.length)];
@@ -104,6 +104,14 @@ router.get('/po_new_process', async (_req, res) => {
     const [pos] = await pool.query('SELECT * FROM po_new');
     if (pos.length === 0) return ok(res, [], 'Geen POs om te verwerken');
 
+    // Create a pending TX for every PO upfront (isvalid=0, iscomplete=0)
+    for (const po of pos) {
+      await pool.query(
+        `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+         VALUES (?, ?, ?, ?, ?, 0, 0)`,
+        [`TXN_${po.po_id}`, po.po_amount, now(), po.po_id, po.oa_id]);
+    }
+
     const internal = [], external = [], rejected = [];
 
     for (const po of pos) {
@@ -119,6 +127,9 @@ router.get('/po_new_process', async (_req, res) => {
       const [senderRows] = await pool.query('SELECT balance FROM accounts WHERE id = ?', [po.oa_id]);
       if (!senderRows.length || senderRows[0].balance < po.po_amount) {
         rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
+        await pool.query(
+          'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+          [`TXN_${po.po_id}`]);
         await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
         await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
           [ts, 'po_rejected', 'Geweigerd: onvoldoende saldo', po.po_id]);
@@ -132,9 +143,12 @@ router.get('/po_new_process', async (_req, res) => {
       await pool.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
       await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
       await pool.query(
+        'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
+        [`TXN_${po.po_id}`]);
+      await pool.query(
         `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
          VALUES (?, ?, ?, ?, ?, 1, 1)`,
-        [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
+        [`TXN_CREDIT_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
       await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
         [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
     }
@@ -142,6 +156,9 @@ router.get('/po_new_process', async (_req, res) => {
     // Remove rejected from queue
     for (const r of rejected) {
       await pool.query('DELETE FROM po_new WHERE po_id = ?', [r.po_id]);
+      await pool.query(
+        'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+        [`TXN_${r.po_id}`]);
       await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
         [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
     }
@@ -152,6 +169,11 @@ router.get('/po_new_process', async (_req, res) => {
       try {
         cbResult = await cb.sendPoToCb(external);
       } catch (e) {
+        for (const po of external) {
+          await pool.query(
+            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+            [`TXN_${po.po_id}`]);
+        }
         return fail(res, 5002, `CB niet bereikbaar: ${e.message}`, 502);
       }
       for (const po of external) {
@@ -256,15 +278,20 @@ router.get('/cb/poll_ack', async (_req, res) => {
          ack.ob_id, ack.oa_id, ack.ob_code||null, ack.ob_datetime||null,
          ack.cb_code||null, ack.cb_datetime||null,
          ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]);
+
       if (String(ack.bb_code) === '2000') {
         await pool.query(
           'UPDATE accounts SET balance = balance - ? WHERE id = ?',
           [ack.po_amount, ack.oa_id]);
         await pool.query(
-          `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
-           VALUES (?, ?, ?, ?, ?, 1, 1)`,
-          [`TXN_DEBIT_${ack.po_id}`, ack.po_amount, ts, ack.po_id, ack.oa_id]);
+          'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
+          [`TXN_${ack.po_id}`]);
+      } else {
+        await pool.query(
+          'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+          [`TXN_${ack.po_id}`]);
       }
+
       await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
         [ts, 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
     }

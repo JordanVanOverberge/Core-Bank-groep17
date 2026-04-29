@@ -528,6 +528,10 @@
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
         Authenticatie
       </div>
+      <div class="nav-item" onclick="showSection('banks', this)">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Netwerk Banken
+      </div>
     </div>
 
     <div class="nav-divider"></div>
@@ -828,6 +832,22 @@
       <div class="response-wrap" id="resp-transactions"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-transactions-title"></div></div><span id="resp-transactions-status"></span></div><div class="response-body" id="resp-transactions-body"></div></div></div>
     </div>
 
+    <!-- BANKS -->
+    <div class="section" id="section-banks">
+      <div class="page-header">
+        <div class="page-title">Netwerk Banken</div>
+        <div class="page-sub">Alle deelnemende banken in het PingFin netwerk (via CB)</div>
+      </div>
+      <div class="card-grid">
+        <button class="card" onclick="loadBanks()">
+          <div class="card-method get">GET</div>
+          <div class="card-name">Netwerk Banken</div>
+          <div class="card-endpoint">/api/banks</div>
+        </button>
+      </div>
+      <div class="response-wrap" id="resp-banks"><div class="response-card"><div class="response-header"><div><div class="response-label">Response</div><div class="response-title" id="resp-banks-title"></div></div><span id="resp-banks-status"></span></div><div class="response-body" id="resp-banks-body"></div></div></div>
+    </div>
+
     <!-- LOGS -->
     <div class="section" id="section-logs">
       <div class="page-header">
@@ -964,6 +984,30 @@
       setResp('docs', 'API Help', res.status, html, true);
     } catch(e) {
       setResp('docs', 'API Help', 'ERROR', e.message);
+    }
+  }
+
+  async function loadBanks() {
+    setResp('banks', 'Netwerk Banken', '...', 'Bezig...');
+    try {
+      const res  = await fetch('/api/banks');
+      const json = await res.json();
+      const data = json.data || [];
+      const rows = data.map(b => `
+        <tr>
+          <td class="iban-code" style="color:var(--accent)">${b.id ?? b.bic ?? '—'}</td>
+          <td style="font-weight:500">${b.name ?? '—'}</td>
+          <td style="font-size:11px;color:var(--text2)">${b.members ?? '—'}</td>
+        </tr>`).join('');
+      const html = `
+        <div style="margin-bottom:12px;font-size:10px;color:var(--text3);font-family:var(--mono)">${data.length} BANK(EN) OP HET NETWERK</div>
+        <table class="data-table">
+          <thead><tr><th>BIC</th><th>Naam</th><th>Leden</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      setResp('banks', 'Netwerk Banken', res.status, html, true);
+    } catch(e) {
+      setResp('banks', 'Netwerk Banken', 'ERROR', e.message);
     }
   }
 

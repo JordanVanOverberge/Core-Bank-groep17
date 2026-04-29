@@ -16,7 +16,6 @@ const now   = () =>
 
 const MAX_AMOUNT = 500;
 
-// CB error codes (pre-validation)
 const CB_CODES = {
   4001: 'Interne betaling – niet naar CB sturen',
   4002: 'Bedrag is te hoog (max 500 euro)',
@@ -29,15 +28,14 @@ const CB_CODES = {
 function localValidate(po) {
   if (po.po_amount <= 0)              return 4003;
   if (po.po_amount > MAX_AMOUNT)      return 4002;
-  if (po.bb_id === process.env.BIC)   return 4001; // internal payment
-  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN format
-  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC format
-  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006; // invalid PO_ID
+  if (po.bb_id === process.env.BIC)   return 4001;
+  if (!/^BE\d{14}$/.test(po.ba_id))   return 4004;
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005;
+  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006;
   return null;
 }
 
 // ─── GET /api/po_new_generate ─────────────────────────────────────────────────
-// Query params: count (default 3), min (default 1), max (default 500)
 router.get('/po_new_generate', async (req, res) => {
   const count = Math.min(parseInt(req.query.count) || 3, 20);
   const min   = Math.max(parseFloat(req.query.min)  || 1,   0.01);
@@ -51,7 +49,6 @@ router.get('/po_new_generate', async (req, res) => {
     if (!accounts.length)
       return fail(res, 'Geen accounts in database om POs van te genereren', 400, 4000);
 
-    // Haal deelnemende banken op van CB (voor externe betalingen)
     let externalBanks = [];
     try {
       const token  = await getCBToken();
@@ -59,8 +56,8 @@ router.get('/po_new_generate', async (req, res) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const cbData = await cbRes.json();
-      externalBanks = (cbData.data || []).filter(b => b.bic !== process.env.BIC);
-    } catch (_) { /* CB niet bereikbaar, enkel interne POs genereren */ }
+      externalBanks = (cbData.data || []).filter(b => (b.id ?? b.bic) !== process.env.BIC);
+    } catch (_) {}
 
     const generated = [];
     for (let i = 0; i < count; i++) {
@@ -71,7 +68,7 @@ router.get('/po_new_generate', async (req, res) => {
       let bb_id, ba_id;
       if (externalBanks.length > 0 && Math.random() > 0.3) {
         const bank = externalBanks[Math.floor(Math.random() * externalBanks.length)];
-        bb_id = bank.bic;
+        bb_id = bank.id ?? bank.bic;
         ba_id = bank.iban ?? `BE${String(Math.floor(Math.random() * 1e14)).padStart(14, '0')}`;
       } else {
         const dest = accounts[Math.floor(Math.random() * accounts.length)];
@@ -120,11 +117,20 @@ router.get('/po_new_process', async (_req, res) => {
     const [pos] = await pool.query('SELECT * FROM po_new');
     if (pos.length === 0) return ok(res, [], 'Geen POs om te verwerken');
 
+    // Create a pending TX for every PO upfront (isvalid=0, iscomplete=0)
+    for (const po of pos) {
+      try {
+        await pool.query(
+          `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+           VALUES (?, ?, ?, ?, ?, 0, 0)`,
+          [`TXN_${po.po_id}`, po.po_amount, now(), po.po_id, po.oa_id]);
+      } catch (_) {}
+    }
+
     const internal = [];
     const external = [];
     const rejected = [];
 
-    // Splits POs: interne betalingen, externe betalingen, en ongeldige
     for (const po of pos) {
       const errCode = localValidate(po);
       if (errCode === 4001) { internal.push(po); continue; }
@@ -136,7 +142,6 @@ router.get('/po_new_process', async (_req, res) => {
     for (const po of internal) {
       const ts = now();
 
-      // Saldo-check: weiger als sender onvoldoende saldo heeft
       const [senderRows] = await pool.query(
         'SELECT balance FROM accounts WHERE id = ?', [po.oa_id]
       );
@@ -147,6 +152,11 @@ router.get('/po_new_process', async (_req, res) => {
             ? `Onvoldoende saldo (huidig: ${senderRows[0].balance}, gevraagd: ${po.po_amount})`
             : 'Zenderrekening niet gevonden'
         });
+        try {
+          await pool.query(
+            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+            [`TXN_${po.po_id}`]);
+        } catch (_) {}
         await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
         try {
           await pool.query(
@@ -168,10 +178,12 @@ router.get('/po_new_process', async (_req, res) => {
         'UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
       try {
         await pool.query(
-          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
-           VALUES (?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE id = id`,
-          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
+          'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
+          [`TXN_${po.po_id}`]);
+        await pool.query(
+          `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
+           VALUES (?, ?, ?, ?, ?, 1, 1)`,
+          [`TXN_CREDIT_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
       } catch (_) {}
       try {
         await pool.query(
@@ -185,6 +197,9 @@ router.get('/po_new_process', async (_req, res) => {
       await pool.query('DELETE FROM po_new WHERE po_id = ?', [r.po_id]);
       try {
         await pool.query(
+          'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+          [`TXN_${r.po_id}`]);
+        await pool.query(
           'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
           [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
       } catch (_) {}
@@ -197,7 +212,6 @@ router.get('/po_new_process', async (_req, res) => {
       try { token = await getCBToken(); }
       catch (e) { return fail(res, `CB token fout: ${e.message}`, 502, 5002); }
 
-      // Verplaats POs naar po_out eerst
       for (const po of external) {
         const ts = now();
         await pool.query(
@@ -213,7 +227,6 @@ router.get('/po_new_process', async (_req, res) => {
         } catch (_) {}
       }
 
-      // Probeer naar CB te sturen
       try {
         const cbRes = await fetch(`${process.env.CB_URL}/po_in`, {
           method: 'POST',
@@ -222,9 +235,11 @@ router.get('/po_new_process', async (_req, res) => {
         });
         cbResult = await cbRes.json();
         if (!cbRes.ok) {
-          // CB weigerde, maar POs zijn al in po_out
           for (const po of external) {
             try {
+              await pool.query(
+                'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+                [`TXN_${po.po_id}`]);
               await pool.query(
                 'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
                 [now(), 'po_out', `CB weigerde PO: ${JSON.stringify(cbResult)}`, po.po_id]);
@@ -232,7 +247,6 @@ router.get('/po_new_process', async (_req, res) => {
           }
           return fail(res, `CB weigerde POs: ${JSON.stringify(cbResult)}`, 502, 5002);
         }
-        // Succes, update log
         for (const po of external) {
           try {
             await pool.query(
@@ -241,9 +255,11 @@ router.get('/po_new_process', async (_req, res) => {
           } catch (_) {}
         }
       } catch (e) {
-        // CB niet bereikbaar, POs blijven in po_out
         for (const po of external) {
           try {
+            await pool.query(
+              'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+              [`TXN_${po.po_id}`]);
             await pool.query(
               'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
               [now(), 'po_out', 'CB niet bereikbaar - PO blijft in po_out', po.po_id]);

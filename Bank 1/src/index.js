@@ -40,6 +40,7 @@ app.get('/api/help', (req, res) =>
     { method: 'GET',  path: '/api/cb/poll_ack',       desc: 'Inkomende ACKs ophalen van CB',                                         auth: false },
     { method: 'GET',  path: '/api/transactions',      desc: 'Alle transacties',                                                      auth: false },
     { method: 'GET',  path: '/api/logs',              desc: 'Alle logs',                                                             auth: false },
+    { method: 'GET',  path: '/api/banks',             desc: 'Lijst van alle banken op het netwerk (via CB)',                          auth: false },
   ], 'API endpoints')
 );
 
@@ -115,6 +116,15 @@ app.get('/api/logs', async (req, res) => {
   }
 });
 
+app.get('/api/banks', async (req, res) => {
+  try {
+    const banks = await cb.fetchBanks();
+    return ok(res, banks.data ?? [], `${(banks.data ?? []).length} bank(en) gevonden`);
+  } catch (err) {
+    return fail(res, 'CB_ERROR', err.message);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
@@ -122,6 +132,26 @@ initDb().then(() => {
     console.log(`BIC: ${process.env.BANK_BIC}`);
     console.log(`CB:  ${process.env.CB_URL}`);
   });
+
+  // Timeout: mark pending TXs older than 5 minutes as invalid+complete
+  const nowStr = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+  setInterval(async () => {
+    try {
+      const [result] = await pool.query(
+        `UPDATE transactions SET isvalid=0, iscomplete=1
+         WHERE iscomplete=0 AND datetime < DATE_SUB(NOW(), INTERVAL 5 MINUTE)`
+      );
+      if (result.affectedRows > 0) {
+        await pool.query(
+          'INSERT INTO log (datetime, type, message) VALUES (?, ?, ?)',
+          [nowStr(), 'timeout', `${result.affectedRows} transactie(s) verlopen door timeout`]
+        );
+        console.log(`[timeout] ${result.affectedRows} pending transaction(s) timed out`);
+      }
+    } catch (err) {
+      console.error('[timeout] Fout bij timeout check:', err.message);
+    }
+  }, 60_000);
 }).catch(err => {
   console.error('Failed to initialize database:', err.message);
   process.exit(1);
