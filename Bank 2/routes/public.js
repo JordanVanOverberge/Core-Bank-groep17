@@ -25,6 +25,7 @@ router.get('/help', (_req, res) => {
     { method: 'GET',  path: '/api/cb/poll_ack',       desc: 'Inkomende ACKs ophalen van CB',                                         auth: false },
     { method: 'GET',  path: '/api/transactions',      desc: 'Alle transacties',                                                      auth: false },
     { method: 'GET',  path: '/api/logs',              desc: 'Alle logs',                                                             auth: false },
+    { method: 'GET',  path: '/api/banks',             desc: 'Lijst van alle banken op het netwerk (via CB)',                          auth: false },
   ], 'API endpoints');
 });
 
@@ -53,6 +54,21 @@ router.get('/token', async (_req, res) => {
   try {
     const token = await getCBToken();
     ok(res, [{ token }], 'Token opgehaald');
+  } catch (err) {
+    fail(res, err.message);
+  }
+});
+
+// GET /api/banks
+router.get('/banks', async (_req, res) => {
+  try {
+    const token = await getCBToken();
+    const cbRes = await fetch(`${process.env.CB_URL}/banks`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const cbData = await cbRes.json();
+    if (!cbRes.ok) return fail(res, `CB fout: ${JSON.stringify(cbData)}`, 502, 5002);
+    ok(res, cbData.data ?? [], `${(cbData.data ?? []).length} bank(en) gevonden`);
   } catch (err) {
     fail(res, err.message);
   }

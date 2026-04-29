@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     datetime    DATETIME        NOT NULL,
     po_id       VARCHAR(50)     NULL,
     account_id  VARCHAR(34)     NOT NULL,
+    isvalid     TINYINT(1)      NOT NULL DEFAULT 0,
+    iscomplete  TINYINT(1)      NOT NULL DEFAULT 0,
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
