@@ -18,12 +18,17 @@ const CB_CODES = {
   4001: 'Interne betaling – niet naar CB sturen',
   4002: `Bedrag is te hoog (max ${MAX_AMOUNT} euro)`,
   4003: 'Bedrag is negatief of nul',
+  4004: 'De bank van de ontvanger bestaat niet op het netwerk',
+  4005: 'De PO is al verstuurd (duplicate po_id in po_out)',
+  4006: 'PO_ID is ongeldig (moet beginnen met eigen BIC)',
 };
 
-function localValidate(po) {
+function localValidate(po, knownBanks = []) {
   if (po.po_amount <= 0)         return 4003;
   if (po.po_amount > MAX_AMOUNT) return 4002;
   if (po.bb_id === BIC())        return 4001;
+  if (!po.po_id.startsWith(BIC() + '_')) return 4006;
+  if (knownBanks.length > 0 && !knownBanks.some(b => (b.id ?? b.bic) === po.bb_id)) return 4004;
   return null;
 }
 
@@ -89,7 +94,7 @@ router.post('/po_new_add', async (req, res) => {
       await pool.query(
         `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [genId(), po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
+        [po.po_id ?? genId(), po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
       );
     }
     return ok(res, [], `${pos.length} PO('s) toegevoegd aan po_new`);
@@ -114,8 +119,21 @@ router.get('/po_new_process', async (_req, res) => {
 
     const internal = [], external = [], rejected = [];
 
+    // Fetch CB bank list for 4004 validation (don't block if CB unreachable)
+    let cbBanks = [];
+    try {
+      const data = await cb.fetchBanks();
+      cbBanks = data.data || [];
+    } catch (_) {}
+
     for (const po of pos) {
-      const errCode = localValidate(po);
+      // 4005: check if po_id already exists in po_out (duplicate)
+      const [dup] = await pool.query('SELECT po_id FROM po_out WHERE po_id = ?', [po.po_id]);
+      if (dup.length > 0) {
+        rejected.push({ po_id: po.po_id, code: 4005, reason: CB_CODES[4005] });
+        continue;
+      }
+      const errCode = localValidate(po, cbBanks);
       if (errCode === 4001) { internal.push(po); continue; }
       if (errCode)          { rejected.push({ po_id: po.po_id, code: errCode, reason: CB_CODES[errCode] }); continue; }
       external.push(po);
@@ -128,7 +146,7 @@ router.get('/po_new_process', async (_req, res) => {
       if (!senderRows.length || senderRows[0].balance < po.po_amount) {
         rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
         await pool.query(
-          'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+          'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
           [`TXN_${po.po_id}`]);
         await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
         await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
@@ -156,8 +174,9 @@ router.get('/po_new_process', async (_req, res) => {
     // Remove rejected from queue
     for (const r of rejected) {
       await pool.query('DELETE FROM po_new WHERE po_id = ?', [r.po_id]);
+      // Only update TX if it's still pending (don't overwrite completed duplicate TXs for 4005)
       await pool.query(
-        'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
+        'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
         [`TXN_${r.po_id}`]);
       await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
         [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
@@ -190,6 +209,7 @@ router.get('/po_new_process', async (_req, res) => {
 
     return ok(res, {
       internal: internal.length,
+      internal_details: internal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
       external: external.length,
       rejected: rejected.length,
       rejected_details: rejected,
