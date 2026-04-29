@@ -26,8 +26,8 @@ function validatePo(po) {
   if (po.po_amount > MAX_AMOUNT)      return 4002;
   if (!/^BE\d{14}$/.test(po.ba_id))   return 4004; // invalid IBAN format
   if (po.bb_id.length !== 8 && po.bb_id.length !== 11) return 4005; // invalid BIC format
-  if (!po.po_id.startsWith(process.env.BIC + '_')) return 4006; // invalid PO_ID
   return null;
+  // Note: po_id starts with the SENDER's BIC, not ours — don't check it here
 }
 
 // POST /api/po_in  –  CB stuurt ons POs toe (van andere banken)

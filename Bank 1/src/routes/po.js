@@ -122,7 +122,7 @@ router.get('/po_new_process', async (_req, res) => {
         [`TXN_${po.po_id}`, po.po_amount, now(), po.po_id, po.oa_id]);
     }
 
-    const internal = [], external = [], rejected = [];
+    const internal = [], external = [], rejected = [], processedInternal = [];
 
     // Fetch CB bank list for 4004 validation (don't block if CB unreachable)
     let cbBanks = [];
@@ -138,6 +138,7 @@ router.get('/po_new_process', async (_req, res) => {
         rejected.push({ po_id: po.po_id, code: 4005, reason: CB_CODES[4005] });
         continue;
       }
+      const errCode = localValidate(po, cbBanks);
       if (errCode) {
         if (errCode === 4001) {
           internal.push(po);
@@ -158,7 +159,7 @@ router.get('/po_new_process', async (_req, res) => {
 
         // Reserve money from sender account
         const [senderRows] = await conn.query('SELECT balance FROM accounts WHERE id = ? FOR UPDATE', [po.oa_id]);
-        if (!senderRows.length || senderRows[0].balance < po.po_amount) {
+        if (!senderRows.length || parseFloat(senderRows[0].balance) < parseFloat(po.po_amount)) {
           await conn.rollback();
           rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
           await pool.query(
@@ -205,6 +206,7 @@ router.get('/po_new_process', async (_req, res) => {
         await conn.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
           [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
 
+        processedInternal.push(po);
         await conn.commit();
       } catch (error) {
         await conn.rollback();
@@ -232,46 +234,82 @@ router.get('/po_new_process', async (_req, res) => {
         [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
     }
 
-    // Send external POs to CB
+    // Send external POs to CB — reserve money first, then send
     let cbResult = null;
+    const externalReady = [];
     if (external.length > 0) {
-      try {
-        cbResult = await cb.sendPoToCb(external);
-      } catch (e) {
-        for (const po of external) {
-          await pool.query(
-            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
-            [`TXN_${po.po_id}`]);
-        }
-        return fail(res, 5002, `CB niet bereikbaar: ${e.message}`, 502);
-      }
       for (const po of external) {
-        const ts = now();
-        await pool.query(
-          `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
-           SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ?, ?, bb_id, ba_id
-           FROM po_new WHERE po_id = ?`, [2000, ts, po.po_id]);
-        await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
-        await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-          [ts, 'po_out', 'PO verstuurd naar CB', po.po_id]);
+        const conn2 = await pool.getConnection();
+        try {
+          await conn2.beginTransaction();
+          const [senderRows] = await conn2.query(
+            'SELECT balance FROM accounts WHERE id = ? FOR UPDATE', [po.oa_id]);
+          if (!senderRows.length || parseFloat(senderRows[0].balance) < parseFloat(po.po_amount)) {
+            await conn2.rollback();
+            rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo voor externe betaling' });
+            await pool.query(
+              'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+              [`TXN_${po.po_id}`]);
+            await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+            await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+              [now(), 'po_rejected', 'Geweigerd: onvoldoende saldo voor externe betaling', po.po_id]);
+            continue;
+          }
+          await conn2.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
+          await conn2.commit();
+          externalReady.push(po);
+        } catch (err) {
+          await conn2.rollback();
+          rejected.push({ po_id: po.po_id, code: 'INTERNAL_ERROR', reason: `Interne fout: ${err.message}` });
+          await pool.query(
+            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+            [`TXN_${po.po_id}`]);
+          await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+        } finally {
+          conn2.release();
+        }
+      }
+
+      if (externalReady.length > 0) {
+        try {
+          cbResult = await cb.sendPoToCb(externalReady);
+        } catch (e) {
+          // CB unreachable: refund reserved amounts
+          for (const po of externalReady) {
+            await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.oa_id]);
+            await pool.query('UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?', [`TXN_${po.po_id}`]);
+            await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+          }
+          return fail(res, 5002, `CB niet bereikbaar: ${e.message}`, 502);
+        }
+        for (const po of externalReady) {
+          const ts = now();
+          await pool.query(
+            `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
+             SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ?, ?, bb_id, ba_id
+             FROM po_new WHERE po_id = ?`, [2000, ts, po.po_id]);
+          await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+          await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+            [ts, 'po_out', 'PO verstuurd naar CB (geld gereserveerd)', po.po_id]);
+        }
       }
     }
 
     if (rejected.length > 0)
       notifs.push('warning', `${rejected.length} PO('s) geweigerd bij verwerking`);
-    if (internal.length > 0)
-      notifs.push('success', `${internal.length} interne betaling(en) verwerkt`);
-    if (external.length > 0)
-      notifs.push('success', `${external.length} externe PO('s) verstuurd naar CB`);
+    if (processedInternal.length > 0)
+      notifs.push('success', `${processedInternal.length} interne betaling(en) verwerkt`);
+    if (externalReady.length > 0)
+      notifs.push('success', `${externalReady.length} externe PO('s) verstuurd naar CB`);
 
     return ok(res, {
-      internal: internal.length,
-      internal_details: internal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
-      external: external.length,
+      internal: processedInternal.length,
+      internal_details: processedInternal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
+      external: externalReady.length,
       rejected: rejected.length,
       rejected_details: rejected,
       cb_response: cbResult,
-    }, `Verwerkt: ${internal.length} intern, ${external.length} extern, ${rejected.length} geweigerd`);
+    }, `Verwerkt: ${processedInternal.length} intern, ${externalReady.length} extern, ${rejected.length} geweigerd`);
   } catch (err) {
     notifs.push('error', `Fout bij PO verwerken: ${err.message}`);
     return fail(res, 'SERVER_ERROR', err.message, 500);
@@ -362,13 +400,15 @@ router.get('/cb/poll_ack', async (_req, res) => {
          ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]);
 
       if (String(ack.bb_code) === '2000') {
-        await pool.query(
-          'UPDATE accounts SET balance = balance - ? WHERE id = ?',
-          [ack.po_amount, ack.oa_id]);
+        // Money was already reserved (debited) when PO was sent — just confirm the TX
         await pool.query(
           'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
           [`TXN_${ack.po_id}`]);
       } else {
+        // Payment rejected: refund the reserved amount back to sender
+        await pool.query(
+          'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+          [ack.po_amount, ack.oa_id]);
         await pool.query(
           'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
           [`TXN_${ack.po_id}`]);

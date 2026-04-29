@@ -134,6 +134,7 @@ router.get('/po_new_process', async (_req, res) => {
     const internal = [];
     const external = [];
     const rejected = [];
+    const processedInternal = [];
 
     // Fetch CB bank list for 4004 validation (don't block if CB unreachable)
     let cbBanks = [];
@@ -168,7 +169,7 @@ router.get('/po_new_process', async (_req, res) => {
 
         // Reserve money from sender account
         const [senderRows] = await conn.query('SELECT balance FROM accounts WHERE id = ? FOR UPDATE', [po.oa_id]);
-        if (!senderRows.length || senderRows[0].balance < po.po_amount) {
+        if (!senderRows.length || parseFloat(senderRows[0].balance) < parseFloat(po.po_amount)) {
           await conn.rollback();
           rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
           await pool.query(
@@ -215,6 +216,7 @@ router.get('/po_new_process', async (_req, res) => {
         await conn.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
           [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
 
+        processedInternal.push(po);
         await conn.commit();
       } catch (error) {
         await conn.rollback();
@@ -244,85 +246,112 @@ router.get('/po_new_process', async (_req, res) => {
       } catch (_) {}
     }
 
-    // --- Externe POs naar CB sturen ---
+    // --- Externe POs naar CB sturen — geld reserveren voor verzending ---
     let cbResult = null;
+    const externalReady = [];
     if (external.length > 0) {
       let token;
       try { token = await getCBToken(); }
       catch (e) { return fail(res, `CB token fout: ${e.message}`, 502, 5002); }
 
       for (const po of external) {
-        const ts = now();
-        await pool.query(
-          `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
-           SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
-           FROM po_new WHERE po_id = ?`, [po.po_id]
-        );
-        await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+        const conn2 = await pool.getConnection();
         try {
-          await pool.query(
-            'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-            [ts, 'po_out', 'PO klaar voor verzending naar CB', po.po_id]);
-        } catch (_) {}
-      }
-
-      try {
-        const cbRes = await fetch(`${process.env.CB_URL}/po_in`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ data: external })
-        });
-        cbResult = await cbRes.json();
-        if (!cbRes.ok) {
-          for (const po of external) {
-            try {
-              await pool.query(
-                'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
-                [`TXN_${po.po_id}`]);
-              await pool.query(
-                'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-                [now(), 'po_out', `CB weigerde PO: ${JSON.stringify(cbResult)}`, po.po_id]);
-            } catch (_) {}
-          }
-          return fail(res, `CB weigerde POs: ${JSON.stringify(cbResult)}`, 502, 5002);
-        }
-        for (const po of external) {
-          try {
-            await pool.query(
-              'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-              [now(), 'po_out', 'PO verstuurd naar CB', po.po_id]);
-          } catch (_) {}
-        }
-      } catch (e) {
-        for (const po of external) {
-          try {
+          await conn2.beginTransaction();
+          const [senderRows] = await conn2.query(
+            'SELECT balance FROM accounts WHERE id = ? FOR UPDATE', [po.oa_id]);
+          if (!senderRows.length || parseFloat(senderRows[0].balance) < parseFloat(po.po_amount)) {
+            await conn2.rollback();
+            rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo voor externe betaling' });
             await pool.query(
               'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
               [`TXN_${po.po_id}`]);
-            await pool.query(
-              'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-              [now(), 'po_out', 'CB niet bereikbaar - PO blijft in po_out', po.po_id]);
-          } catch (_) {}
+            await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+            await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+              [now(), 'po_rejected', 'Geweigerd: onvoldoende saldo voor externe betaling', po.po_id]);
+            continue;
+          }
+          await conn2.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
+          await conn2.commit();
+          externalReady.push(po);
+        } catch (err) {
+          await conn2.rollback();
+          rejected.push({ po_id: po.po_id, code: 'INTERNAL_ERROR', reason: `Interne fout: ${err.message}` });
+          await pool.query(
+            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+            [`TXN_${po.po_id}`]);
+          await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+        } finally {
+          conn2.release();
         }
-        return fail(res, `CB niet bereikbaar: ${e.message}`, 502, 5002);
+      }
+
+      if (externalReady.length > 0) {
+        try {
+          const cbRes = await fetch(`${process.env.CB_URL}/po_in`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ data: externalReady })
+          });
+          cbResult = await cbRes.json();
+          if (!cbRes.ok) {
+            // CB rejected — refund reserved amounts
+            for (const po of externalReady) {
+              await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.oa_id]);
+              await pool.query(
+                'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+                [`TXN_${po.po_id}`]);
+              try {
+                await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+                  [now(), 'po_out', `CB weigerde PO (teruggestort): ${JSON.stringify(cbResult)}`, po.po_id]);
+              } catch (_) {}
+            }
+            return fail(res, `CB weigerde POs: ${JSON.stringify(cbResult)}`, 502, 5002);
+          }
+          for (const po of externalReady) {
+            const ts = now();
+            await pool.query(
+              `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+               SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
+               FROM po_new WHERE po_id = ?`, [po.po_id]);
+            await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+            try {
+              await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+                [ts, 'po_out', 'PO verstuurd naar CB (geld gereserveerd)', po.po_id]);
+            } catch (_) {}
+          }
+        } catch (e) {
+          // Network error — refund reserved amounts
+          for (const po of externalReady) {
+            await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.oa_id]);
+            await pool.query(
+              'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+              [`TXN_${po.po_id}`]);
+            try {
+              await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+                [now(), 'po_out', 'CB niet bereikbaar - geld teruggestort', po.po_id]);
+            } catch (_) {}
+          }
+          return fail(res, `CB niet bereikbaar: ${e.message}`, 502, 5002);
+        }
       }
     }
 
     if (rejected.length > 0)
       notifs.push('warning', `${rejected.length} PO('s) geweigerd bij verwerking`);
-    if (internal.length > 0)
-      notifs.push('success', `${internal.length} interne betaling(en) verwerkt`);
-    if (external.length > 0)
-      notifs.push('success', `${external.length} externe PO('s) verstuurd naar CB`);
+    if (processedInternal.length > 0)
+      notifs.push('success', `${processedInternal.length} interne betaling(en) verwerkt`);
+    if (externalReady.length > 0)
+      notifs.push('success', `${externalReady.length} externe PO('s) verstuurd naar CB`);
 
     ok(res, {
-      internal: internal.length,
-      internal_details: internal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
-      external: external.length,
+      internal: processedInternal.length,
+      internal_details: processedInternal.map(po => ({ po_id: po.po_id, code: 4001, reason: CB_CODES[4001] })),
+      external: externalReady.length,
       rejected: rejected.length,
       rejected_details: rejected,
       cb_response: cbResult
-    }, `Verwerkt: ${internal.length} intern, ${external.length} extern, ${rejected.length} geweigerd`);
+    }, `Verwerkt: ${processedInternal.length} intern, ${externalReady.length} extern, ${rejected.length} geweigerd`);
 
   } catch (err) {
     notifs.push('error', `Fout bij PO verwerken: ${err.message}`);

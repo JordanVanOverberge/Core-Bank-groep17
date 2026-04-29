@@ -142,20 +142,30 @@ initDb().then(() => {
     console.log(`CB:  ${process.env.CB_URL}`);
   });
 
-  // Timeout: mark pending TXs older than 5 minutes as invalid+complete
+  // Timeout: refund reserved amounts and mark pending TXs older than 5 minutes as invalid
   const nowStr = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
   setInterval(async () => {
     try {
-      const [result] = await pool.query(
-        `UPDATE transactions SET isvalid=0, iscomplete=1
+      const [pendingTxs] = await pool.query(
+        `SELECT id, amount, account_id FROM transactions
          WHERE iscomplete=0 AND datetime < DATE_SUB(NOW(), INTERVAL 5 MINUTE)`
       );
-      if (result.affectedRows > 0) {
+      if (pendingTxs.length > 0) {
+        for (const tx of pendingTxs) {
+          await pool.query(
+            'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+            [tx.amount, tx.account_id]
+          );
+        }
+        const ids = pendingTxs.map(tx => tx.id);
+        await pool.query(
+          `UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id IN (?)`, [ids]
+        );
         await pool.query(
           'INSERT INTO log (datetime, type, message) VALUES (?, ?, ?)',
-          [nowStr(), 'timeout', `${result.affectedRows} transactie(s) verlopen door timeout`]
+          [nowStr(), 'timeout', `${pendingTxs.length} transactie(s) verlopen door timeout (geld teruggestort)`]
         );
-        console.log(`[timeout] ${result.affectedRows} pending transaction(s) timed out`);
+        console.log(`[timeout] ${pendingTxs.length} pending transaction(s) timed out, amounts refunded`);
       }
     } catch (err) {
       console.error('[timeout] Fout bij timeout check:', err.message);

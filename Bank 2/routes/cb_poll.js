@@ -157,16 +157,18 @@ router.get('/cb/poll_ack', async (_req, res) => {
       );
     } catch (_) {}
     if (String(ack.bb_code) === '2000') {
+      // Money was already reserved (debited) when PO was sent — just confirm the TX
       try {
-        await pool.query(
-          'UPDATE accounts SET balance = balance - ? WHERE id = ?',
-          [ack.po_amount, ack.oa_id]);
         await pool.query(
           'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
           [`TXN_${ack.po_id}`]);
       } catch (_) {}
     } else {
+      // Payment rejected: refund the reserved amount back to sender
       try {
+        await pool.query(
+          'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+          [ack.po_amount, ack.oa_id]);
         await pool.query(
           'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ?',
           [`TXN_${ack.po_id}`]);
