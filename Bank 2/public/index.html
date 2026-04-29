@@ -421,6 +421,58 @@
     @keyframes toastIn  { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
     @keyframes toastOut { to   { opacity:0; transform:translateX(40px); } }
     .toast-icon { font-size: 14px; flex-shrink: 0; }
+
+    /* ─── AUTO POLLING ─── */
+    .auto-poll {
+      margin: 10px 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 12px;
+    }
+    .auto-poll-title {
+      font-family: var(--mono); font-size: 9px;
+      letter-spacing: 0.15em; color: var(--text3);
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .auto-poll-status {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 10px; font-size: 11px;
+      color: var(--text2); font-family: var(--mono);
+    }
+    .poll-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text3); flex-shrink: 0; transition: background 0.3s;
+    }
+    .poll-dot.active { background: var(--green); animation: spin 0s, pulse2 2s infinite; }
+    @keyframes pulse2 {
+      0%, 100% { opacity:1; box-shadow: 0 0 0 0 rgba(5,150,105,0.4); }
+      50% { opacity:0.8; box-shadow: 0 0 0 4px rgba(5,150,105,0); }
+    }
+    .auto-poll-btns { display: flex; gap: 6px; margin-bottom: 10px; }
+    .poll-btn {
+      flex: 1; border: none; border-radius: 6px;
+      padding: 7px 0; font-size: 11px; font-weight: 600;
+      cursor: pointer; font-family: var(--sans);
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .poll-btn-start {
+      background: var(--green-light); color: var(--green);
+      border: 1px solid rgba(5,150,105,0.25);
+    }
+    .poll-btn-start:hover:not(:disabled) { background: #A7F3D0; }
+    .poll-btn-pause {
+      background: var(--red-light); color: var(--red);
+      border: 1px solid rgba(220,38,38,0.2);
+    }
+    .poll-btn-pause:hover:not(:disabled) { background: #FECACA; }
+    .poll-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .auto-poll-info {
+      font-size: 10px; color: var(--text3);
+      font-family: var(--mono); line-height: 1.8;
+    }
+    .auto-poll-info span { color: var(--accent); font-weight: 700; }
   </style>
 </head>
 <body>
@@ -593,6 +645,28 @@
                 d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
         </svg>
         Logs
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+
+      <div class="auto-poll">
+        <div class="auto-poll-title">Auto Processing</div>
+        <div class="auto-poll-status">
+          <div class="poll-dot" id="pollDot"></div>
+          <span id="pollStatusText">Gepauzeerd</span>
+        </div>
+        <div class="auto-poll-btns">
+          <button class="poll-btn poll-btn-start" id="pollStartBtn" onclick="startPolling()">
+            ▶ Start
+          </button>
+          <button class="poll-btn poll-btn-pause" id="pollPauseBtn" onclick="pausePolling()" disabled>
+            ⏸ Pauze
+          </button>
+        </div>
+        <div class="auto-poll-info">
+          <div id="pollCountdown">Volgende verwerking in: —</div>
+          <div id="pollLastRun">Laatste verwerking: —</div>
+        </div>
       </div>
     </nav>
 
@@ -1552,6 +1626,65 @@ async function _pollNotifs() {
 
 _pollNotifs();
 setInterval(_pollNotifs, 4000);
+
+/* ─── AUTO POLLING ─── */
+let _pollInterval      = null;
+let _countdownInterval = null;
+let _countdown         = 5;
+
+async function _runPollingCycle() {
+  // 1. Valideer en stuur nieuwe POs naar CB
+  try {
+    await fetch('/api/po_new_process', {
+      headers: { 'Authorization': 'Bearer gkccbebb_token_2026' }
+    });
+  } catch(_) {}
+  // 2. Haal inkomende POs op van CB + stuur ACKs terug
+  try {
+    await fetch('/api/cb/poll_po', {
+      headers: { 'Authorization': 'Bearer gkccbebb_token_2026' }
+    });
+  } catch(_) {}
+  // 3. Haal ACKs op van CB voor onze verstuurde POs
+  try {
+    await fetch('/api/cb/poll_ack', {
+      headers: { 'Authorization': 'Bearer gkccbebb_token_2026' }
+    });
+  } catch(_) {}
+  const t = new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('pollLastRun').textContent = `Laatste verwerking: ${t}`;
+  _countdown = 5;
+}
+
+function startPolling() {
+  if (_pollInterval) return;
+  _countdown = 5;
+  _runPollingCycle();
+  _pollInterval = setInterval(_runPollingCycle, 5000);
+  _countdownInterval = setInterval(() => {
+    _countdown--;
+    if (_countdown <= 0) _countdown = 5;
+    document.getElementById('pollCountdown').innerHTML =
+      `Volgende verwerking in: <span>${_countdown}s</span>`;
+  }, 1000);
+  document.getElementById('pollDot').classList.add('active');
+  document.getElementById('pollStatusText').textContent = 'Actief — elke 5s';
+  document.getElementById('pollCountdown').innerHTML = 'Volgende verwerking in: <span>5s</span>';
+  document.getElementById('pollStartBtn').disabled = true;
+  document.getElementById('pollPauseBtn').disabled = false;
+}
+
+function pausePolling() {
+  clearInterval(_pollInterval);
+  clearInterval(_countdownInterval);
+  _pollInterval = null;
+  _countdownInterval = null;
+  document.getElementById('pollDot').classList.remove('active');
+  document.getElementById('pollStatusText').textContent = 'Gepauzeerd';
+  document.getElementById('pollCountdown').textContent = 'Volgende verwerking in: —';
+  document.getElementById('pollStartBtn').disabled = false;
+  document.getElementById('pollPauseBtn').disabled = true;
+}
 </script>
 <div id="toastContainer" class="toast-container"></div>
 </body>
