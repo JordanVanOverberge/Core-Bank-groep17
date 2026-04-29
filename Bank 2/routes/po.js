@@ -162,55 +162,73 @@ router.get('/po_new_process', async (_req, res) => {
     // --- Interne betalingen verwerken (geen CB nodig) ---
     for (const po of internal) {
       const ts = now();
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
 
-      const [senderRows] = await pool.query(
-        'SELECT balance FROM accounts WHERE id = ?', [po.oa_id]
-      );
-      if (!senderRows.length || senderRows[0].balance < po.po_amount) {
-        rejected.push({
-          po_id: po.po_id, code: 'INSUFFICIENT_FUNDS',
-          reason: senderRows.length
-            ? `Onvoldoende saldo (huidig: ${senderRows[0].balance}, gevraagd: ${po.po_amount})`
-            : 'Zenderrekening niet gevonden'
-        });
-        try {
+        // Reserve money from sender account
+        const [senderRows] = await conn.query('SELECT balance FROM accounts WHERE id = ? FOR UPDATE', [po.oa_id]);
+        if (!senderRows.length || senderRows[0].balance < po.po_amount) {
+          await conn.rollback();
+          rejected.push({ po_id: po.po_id, code: 'INSUFFICIENT_FUNDS', reason: 'Onvoldoende saldo' });
           await pool.query(
             'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
             [`TXN_${po.po_id}`]);
-        } catch (_) {}
-        await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
-        try {
-          await pool.query(
-            'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+          await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
             [ts, 'po_rejected', 'Geweigerd: onvoldoende saldo', po.po_id]);
-        } catch (_) {}
-        continue;
-      }
+          continue;
+        }
+        await conn.query('UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
 
-      await pool.query(
-        `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
-         SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
-         FROM po_new WHERE po_id = ?`, [po.po_id]
-      );
-      await pool.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
-      await pool.query(
-        'UPDATE accounts SET balance = balance - ? WHERE id = ?', [po.po_amount, po.oa_id]);
-      await pool.query(
-        'UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
-      try {
-        await pool.query(
+        // Move from po_new to po_out
+        await conn.query(
+          `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
+           SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id
+           FROM po_new WHERE po_id = ?`, [po.po_id]);
+        await conn.query('DELETE FROM po_new WHERE po_id = ?', [po.po_id]);
+
+        // Check if recipient exists
+        const [recipientRows] = await conn.query('SELECT id FROM accounts WHERE id = ?', [po.ba_id]);
+        if (recipientRows.length === 0) {
+            await conn.rollback(); // Refund
+            rejected.push({ po_id: po.po_id, code: 'RECIPIENT_NOT_FOUND', reason: 'Ontvanger niet gevonden' });
+            await pool.query(
+                'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+                [`TXN_${po.po_id}`]);
+            await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+                [ts, 'po_rejected', 'Geweigerd: ontvanger niet gevonden', po.po_id]);
+            continue;
+        }
+
+        // Transfer money to recipient
+        await conn.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.ba_id]);
+
+        // Finalize transaction
+        await conn.query(
           'UPDATE transactions SET isvalid=1, iscomplete=1 WHERE id = ?',
           [`TXN_${po.po_id}`]);
-        await pool.query(
+        await conn.query(
           `INSERT IGNORE INTO transactions (id, amount, datetime, po_id, account_id, isvalid, iscomplete)
            VALUES (?, ?, ?, ?, ?, 1, 1)`,
           [`TXN_CREDIT_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]);
-      } catch (_) {}
-      try {
-        await pool.query(
-          'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+        await conn.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
           [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
-      } catch (_) {}
+
+        await conn.commit();
+      } catch (error) {
+        await conn.rollback();
+        // Refund money if something went wrong
+        await pool.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [po.po_amount, po.oa_id]);
+        rejected.push({ po_id: po.po_id, code: 'INTERNAL_ERROR', reason: `Interne fout: ${error.message}` });
+        await pool.query(
+            'UPDATE transactions SET isvalid=0, iscomplete=1 WHERE id = ? AND iscomplete=0',
+            [`TXN_${po.po_id}`]);
+        await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+            [ts, 'po_rejected', `Geweigerd: interne fout - ${error.message}`, po.po_id]);
+      } finally {
+        conn.release();
+      }
     }
 
     // --- Ongeldige POs uit po_new verwijderen ---
