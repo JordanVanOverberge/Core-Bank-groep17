@@ -63,6 +63,10 @@ router.get('/po_new_generate', async (req, res) => {
         ba_id = dest.id;
       }
 
+      // Valideer VOOR opslag (gegenereerde POs zijn doorgaans geldig)
+      const tempPo = { po_id, po_amount: amount, bb_id, ba_id };
+      const errCode = localValidate(tempPo);
+      if (errCode && errCode !== 4001) continue; // sla ongeldige over
       await pool.query(
         `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -78,20 +82,31 @@ router.get('/po_new_generate', async (req, res) => {
 });
 
 // ─── POST /api/po_new_add ─────────────────────────────────────────────────────
+// Validatie gebeurt VOOR de PO in po_new wordt opgeslagen.
 router.post('/po_new_add', async (req, res) => {
   const pos = req.body?.data;
   if (!Array.isArray(pos) || pos.length === 0)
     return fail(res, 4000, 'Geen PO data (verwacht: { "data": [...] })', 400);
 
   try {
+    const added = [], rejected = [];
     for (const po of pos) {
+      const po_id = genId();
+      // Valideer VOOR opslag: 4002/4003 worden geweigerd; 4001 (intern) is geldig
+      const errCode = localValidate({ ...po, po_id });
+      if (errCode && errCode !== 4001) {
+        rejected.push({ po_id, code: errCode, reason: CB_CODES[errCode] });
+        continue;
+      }
       await pool.query(
         `INSERT INTO po_new (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [genId(), po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
+        [po_id, po.po_amount, po.po_message, now(), BIC(), po.oa_id, po.bb_id, po.ba_id]
       );
+      added.push(po_id);
     }
-    return ok(res, [], `${pos.length} PO('s) toegevoegd aan po_new`);
+    return ok(res, { added, rejected },
+      `${added.length} PO('s) toegevoegd aan po_new, ${rejected.length} geweigerd voor opslag`);
   } catch (err) {
     return fail(res, 'SERVER_ERROR', err.message, 500);
   }
@@ -134,11 +149,16 @@ router.get('/po_new_process', async (_req, res) => {
         [ts, 'po_internal', 'Interne betaling verwerkt', po.po_id]);
     }
 
-    // Remove rejected from queue
+    // Ongeldige POs: verplaats naar po_out met foutcode (TX mislukt / rood)
     for (const r of rejected) {
+      const ts = now();
+      await pool.query(
+        `INSERT IGNORE INTO po_out (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, bb_id, ba_id)
+         SELECT po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ?, ?, bb_id, ba_id
+         FROM po_new WHERE po_id = ?`, [r.code, ts, r.po_id]);
       await pool.query('DELETE FROM po_new WHERE po_id = ?', [r.po_id]);
       await pool.query('INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-        [now(), 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
+        [ts, 'po_rejected', `Geweigerd (code ${r.code}): ${r.reason}`, r.po_id]);
     }
 
     // Send external POs to CB
@@ -241,6 +261,7 @@ router.get('/cb/poll_ack', async (_req, res) => {
     const data = await cb.fetchAckOut();
     const acks = data.data || [];
     for (const ack of acks) {
+      const ts = now();
       await pool.query(
         `INSERT IGNORE INTO ack_in
            (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime,
@@ -250,8 +271,14 @@ router.get('/cb/poll_ack', async (_req, res) => {
          ack.ob_id, ack.oa_id, ack.ob_code||null, ack.ob_datetime||null,
          ack.cb_code||null, ack.cb_datetime||null,
          ack.bb_id, ack.ba_id, ack.bb_code||null, ack.bb_datetime||null]);
+      // TX verwerken: markeer de uitgaande betaling als afgerond in po_out
+      await pool.query(
+        `UPDATE po_out SET cb_code = ?, cb_datetime = ?, bb_code = ?, bb_datetime = ?
+         WHERE po_id = ?`,
+        [ack.cb_code||null, ack.cb_datetime||null,
+         ack.bb_code||null, ack.bb_datetime||null, ack.po_id]);
       await pool.query('INSERT INTO log (datetime, message, type, po_id) VALUES (?, ?, ?, ?)',
-        [now(), 'ACK ontvangen van CB', 'ACK_IN', ack.po_id]);
+        [ts, 'ACK ontvangen van CB – TX verwerkt', 'ACK_IN', ack.po_id]);
     }
     return ok(res, acks, `${acks.length} ACK('s) ontvangen`);
   } catch (err) {

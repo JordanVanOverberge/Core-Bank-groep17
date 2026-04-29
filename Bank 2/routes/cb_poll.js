@@ -12,6 +12,22 @@ const fail = (res, msg, status = 500, code = null) =>
 
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+const MAX_AMOUNT = 500;
+const CB_CODES = {
+  4002: 'Bedrag is te hoog (max 500 euro)',
+  4003: 'Bedrag is negatief of nul',
+  4004: 'Ontvangende IBAN ongeldig (moet BE + 14 cijfers zijn)',
+  4005: 'BIC ongeldig (moet 8 of 11 tekens zijn)',
+};
+
+function validatePo(po) {
+  if (po.po_amount <= 0)                                          return 4003;
+  if (po.po_amount > MAX_AMOUNT)                                  return 4002;
+  if (!/^BE\d{14}$/.test(po.ba_id))                              return 4004;
+  if (po.bb_id.length !== 8 && po.bb_id.length !== 11)           return 4005;
+  return null;
+}
+
 // ─── GET /api/cb/poll_po ──────────────────────────────────────────────────────
 // Haal inkomende POs op van CB, sla op in po_in, crediteer rekeningen, stuur ACK terug
 router.get('/cb/poll_po', async (_req, res) => {
@@ -37,35 +53,72 @@ router.get('/cb/poll_po', async (_req, res) => {
   for (const po of incomingPos) {
     const ts = now();
 
-    // Sla op in po_in
+    // Validatie BB (schema: PO_IN → validatie BB → OK/FAIL)
+    const errCode = validatePo(po);
+    const bb_code = errCode !== null ? errCode : 2000;
+
+    // Sla op in po_in met resultaatcode
     try {
       await pool.query(
-        `INSERT INTO po_in (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, bb_id, ba_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO po_in
+           (po_id, po_amount, po_message, po_datetime,
+            ob_id, oa_id, ob_code, ob_datetime,
+            cb_code, cb_datetime,
+            bb_id, ba_id, bb_code, bb_datetime)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE po_id = po_id`,
         [po.po_id, po.po_amount, po.po_message, po.po_datetime,
-         po.ob_id, po.oa_id, po.bb_id, po.ba_id]
+         po.ob_id, po.oa_id, po.ob_code ?? null, po.ob_datetime ?? null,
+         po.cb_code ?? null, po.cb_datetime ?? null,
+         po.bb_id, po.ba_id, bb_code, ts]
       );
     } catch (_) {}
 
-    // Crediteer ontvangende rekening
-    try {
-      await pool.query(
-        'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-        [po.po_amount, po.ba_id]
-      );
-    } catch (_) {}
+    if (!errCode) {
+      // OK (groen): crediteer rekening + sla TX op
+      try {
+        await pool.query(
+          'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+          [po.po_amount, po.ba_id]
+        );
+      } catch (_) {}
 
-    // Bouw ACK op
+      try {
+        await pool.query(
+          `INSERT INTO transactions (id, amount, datetime, po_id, account_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [`TXN_${po.po_id}`, po.po_amount, ts, po.po_id, po.ba_id]
+        );
+      } catch (_) {}
+
+      try {
+        await pool.query(
+          'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          [ts, 'po_in', 'PO ontvangen en verwerkt – rekening gecrediteerd', po.po_id]
+        );
+      } catch (_) {}
+    } else {
+      // FAIL (rood): log afwijzing, rekening NIET gecrediteerd
+      try {
+        await pool.query(
+          'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
+          [ts, 'po_rejected',
+           `PO geweigerd door BB: ${CB_CODES[errCode]} (code ${errCode})`, po.po_id]
+        );
+      } catch (_) {}
+    }
+
+    // ACK_OUT aanmaken (zowel bij OK als bij FAIL)
     const ack = {
       po_id: po.po_id, po_amount: po.po_amount, po_message: po.po_message,
       po_datetime: po.po_datetime,
-      ob_id: po.ob_id, oa_id: po.oa_id, ob_code: po.ob_code ?? null, ob_datetime: po.ob_datetime ?? null,
+      ob_id: po.ob_id, oa_id: po.oa_id,
+      ob_code: po.ob_code ?? null, ob_datetime: po.ob_datetime ?? null,
       cb_code: po.cb_code ?? null, cb_datetime: po.cb_datetime ?? null,
-      bb_id: process.env.BIC, ba_id: po.ba_id, bb_code: 2000, bb_datetime: ts
+      bb_id: process.env.BIC, ba_id: po.ba_id, bb_code, bb_datetime: ts
     };
 
-    // Sla ACK op in ack_out
     try {
       await pool.query(
         `INSERT INTO ack_out
@@ -82,17 +135,10 @@ router.get('/cb/poll_po', async (_req, res) => {
       );
     } catch (_) {}
 
-    try {
-      await pool.query(
-        'INSERT INTO log (datetime, type, message, po_id) VALUES (?, ?, ?, ?)',
-        [ts, 'po_in', 'PO ontvangen van CB', po.po_id]
-      );
-    } catch (_) {}
-
     acks.push(ack);
   }
 
-  // Stuur ACKs terug naar CB
+  // ACK_OUT → stuur naar CB via POST /api/v2/ack_in
   try {
     await fetch(`${process.env.CB_URL}/ack_in`, {
       method: 'POST',
