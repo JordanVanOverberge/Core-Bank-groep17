@@ -714,6 +714,7 @@
           <div class="field"><label>IBAN betaler (OA)</label><input id="add_oa_id" value="BE68539007547034" /></div>
           <div class="field"><label>IBAN ontvanger (BA)</label><input id="add_ba_id" value="BE71096123456789" /></div>
           <div class="field"><label>Bericht</label><input id="add_message" value="Testbetaling" /></div>
+          <div class="field"><label>PO ID <span style="font-weight:400;opacity:.6">(optioneel – leeg = automatisch)</span></label><input id="add_po_id" placeholder="bv. PGFBBE_1234_abc" /></div>
         </div>
         <button class="submit-btn" onclick="addPo()">Toevoegen</button>
       </div>
@@ -1026,13 +1027,16 @@
   }
 
   async function addPo() {
-    const body = { data: [{
+    const customId = document.getElementById('add_po_id').value.trim();
+    const entry = {
       po_amount:  parseFloat(document.getElementById('add_amount').value),
       po_message: document.getElementById('add_message').value,
       bb_id:      document.getElementById('add_bb_id').value,
       oa_id:      document.getElementById('add_oa_id').value,
       ba_id:      document.getElementById('add_ba_id').value,
-    }]};
+    };
+    if (customId) entry.po_id = customId;
+    const body = { data: [entry] };
     setResp('po-add', 'POST /api/po_new_add', '...', 'Bezig...');
     try {
       const res  = await fetch('/api/po_new_add', {

@@ -792,6 +792,7 @@
               <div class="field"><label>BB ID (BIC)</label><input id="add_bb_id" value="GEBABEBB"></div>
               <div class="field"><label>OA ID (IBAN afzender)</label><input id="add_oa_id" value="OA001"></div>
               <div class="field"><label>BA ID (IBAN ontvanger)</label><input id="add_ba_id" value="BE68539007547034"></div>
+              <div class="field"><label>PO ID <span style="font-weight:400;opacity:.6">(optioneel – leeg = automatisch)</span></label><input id="add_po_id" placeholder="bv. GKCCBEBB_1234_abc"></div>
             </div>
             <button class="btn-primary" onclick="addPo()">Voeg toe</button>
           </div>
@@ -1249,13 +1250,16 @@ async function generatePos() {
 }
 
 async function addPo() {
-  const body = { data: [{
+  const customId = document.getElementById('add_po_id').value.trim();
+  const entry = {
     po_amount: parseFloat(document.getElementById('add_amount').value),
     po_message: document.getElementById('add_message').value,
     bb_id: document.getElementById('add_bb_id').value,
     oa_id: document.getElementById('add_oa_id').value,
     ba_id: document.getElementById('add_ba_id').value
-  }]};
+  };
+  if (customId) entry.po_id = customId;
+  const body = { data: [entry] };
   try {
     const res  = await fetch('/api/po_new_add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
     const text = await res.text();
