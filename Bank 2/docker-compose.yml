@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database Service
   mysql:
@@ -32,13 +30,13 @@ services:
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: pingfin_gkcc
-      PORT: 3001
+      PORT: 8088
       BIC: GKCCBEBB
       BANK_NAME: PingFin Centrale (GKCCBEBB)
       CB_SECRET: 23f67d88559ecdba
       CB_URL: https://stevenop.be/pingfin/api/v2
     ports:
-      - "3001:3001"
+      - "8088:8088"
     volumes:
       - .:/app
       - /app/node_modules
