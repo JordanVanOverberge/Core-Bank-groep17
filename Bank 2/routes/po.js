@@ -154,7 +154,7 @@ router.get('/po_new_process', async (_req, res) => {
         rejected.push({ po_id: po.po_id, code: 4005, reason: CB_CODES[4005] });
         continue;
       }
-      const errCode = localValidate(po, cbBanks);
+      const errCode = localValidate(po, cbBanks); //give code 4001 for internal POs
       if (errCode === 4001) { internal.push(po); continue; }
       if (errCode)          { rejected.push({ po_id: po.po_id, code: errCode, reason: CB_CODES[errCode] }); continue; }
       external.push(po);

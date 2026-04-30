@@ -13,7 +13,7 @@ RUN npm install
 COPY . .
 
 # Expose poort
-EXPOSE 3001
+EXPOSE 8088
 
 # Start applicatie
 CMD ["node", "index.js"]
